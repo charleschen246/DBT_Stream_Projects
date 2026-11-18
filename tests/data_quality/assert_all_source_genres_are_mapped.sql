@@ -1,7 +1,6 @@
 {{ config(severity='warn') }}
 
--- Warns when a platform publishes a genre label that isn't in the genre_mappings seed yet.
--- Those titles fall back to genre_group = 'Other' until a row is added to the seed.
+-- genre labels missing from seeds/genre_mappings.csv
 
 select
     genre_name,

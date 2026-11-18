@@ -1,6 +1,4 @@
--- One Big Table: the star schema flattened into one wide table for BI tools and ad-hoc analysis.
--- Grain: one row per title per platform (same as fct_titles).
--- Genres and countries are rolled up into comma-separated lists so the grain doesn't fan out.
+-- genres and countries are rolled up into lists so this stays one row per title
 
 with
 
@@ -64,7 +62,6 @@ countries_rolled_up as (
 final as (
 
     select
-        -- title
         titles.title_key,
         titles.show_id,
         titles.title,
@@ -74,22 +71,18 @@ final as (
         titles.directors,
         titles.cast_members,
 
-        -- platform
         platforms.platform_id,
         platforms.platform_name,
         platforms.parent_company,
 
-        -- rating
         ratings.rating_id,
         ratings.rating_system,
         ratings.audience_group,
         ratings.audience_rank,
 
-        -- release
         titles.release_year,
         titles.release_decade,
 
-        -- date added
         titles.date_added,
         dates.calendar_year as added_year,
         dates.calendar_quarter as added_quarter,
@@ -97,18 +90,15 @@ final as (
         dates.first_day_of_month as added_month_start,
         titles.years_from_release_to_platform,
 
-        -- duration
         titles.duration_minutes,
         titles.season_count,
 
-        -- genres and countries
         titles.genre_count,
         genres_rolled_up.genres,
         genres_rolled_up.genre_groups,
         titles.country_count,
         countries_rolled_up.countries,
 
-        -- data quality
         titles.had_misplaced_duration,
         titles.is_content_type_corrected
 

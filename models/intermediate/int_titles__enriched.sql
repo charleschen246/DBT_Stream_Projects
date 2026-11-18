@@ -12,8 +12,7 @@ rating_mappings as (
 
 ),
 
--- A few source rows have the duration typed into the rating column
--- (e.g. rating = '74 MIN', duration = NULL). Move those values back where they belong.
+-- some rows have the duration in the rating column (rating = '74 MIN', duration null)
 misplaced_values_fixed as (
 
     select
@@ -48,7 +47,6 @@ realigned as (
 
 ),
 
--- '90 min' -> 90 minutes; '3 Seasons' -> 3 seasons
 duration_parsed as (
 
     select
@@ -59,8 +57,8 @@ duration_parsed as (
 
 ),
 
--- Hulu labels some series as 'Movie' even though their duration is '2 Seasons'
--- (e.g. Blippi, Brassic). When the duration unit contradicts the type, trust the duration.
+-- 62 Hulu series are typed 'Movie' with a duration like '2 Seasons' (Blippi, Brassic...).
+-- when the two disagree, go with the duration
 content_type_corrected as (
 
     select
@@ -90,11 +88,9 @@ enriched as (
         content_type_corrected.genres,
         content_type_corrected.description,
 
-        -- rating
         content_type_corrected.raw_rating,
         coalesce(rating_mappings.rating_id, 'UNKNOWN') as rating_id,
 
-        -- duration
         content_type_corrected.duration,
         case
             when content_type_corrected.duration_unit like 'min%'
@@ -105,14 +101,12 @@ enriched as (
                 then content_type_corrected.duration_value
         end as season_count,
 
-        -- dates
         content_type_corrected.release_year,
         content_type_corrected.release_year - mod(content_type_corrected.release_year, 10) as release_decade,
         content_type_corrected.date_added,
         extract(year from content_type_corrected.date_added) - content_type_corrected.release_year
             as years_from_release_to_platform,
 
-        -- flags
         content_type_corrected.corrected_content_type = 'movie' as is_movie,
         content_type_corrected.is_rating_misplaced as had_misplaced_duration,
         coalesce(

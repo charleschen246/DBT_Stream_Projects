@@ -1,5 +1,4 @@
--- Which titles are available on more than one platform?
--- Compile with `dbt compile --select titles_on_multiple_platforms` and run the output in the warehouse.
+-- titles available on more than one platform
 
 with
 

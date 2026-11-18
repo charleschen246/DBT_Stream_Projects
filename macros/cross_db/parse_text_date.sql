@@ -1,8 +1,4 @@
-{#
-    Parses dates like "September 25, 2021" (the Kaggle format) into a DATE.
-    Falls back to ISO "2021-09-25" in case the column was loaded already formatted.
-    Returns NULL instead of erroring on anything unparseable.
-#}
+{# 'September 25, 2021' -> date. Falls back to ISO, returns null if neither parses. #}
 
 {% macro parse_text_date(column) -%}
     {{ return(adapter.dispatch('parse_text_date', 'streaming_analytics')(column)) }}

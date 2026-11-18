@@ -1,11 +1,7 @@
-/*
-    Explodes genres straight from the staging models, without going through the
-    intermediate layer, and checks the bridge table ends up with the same
-    title/genre pairs per platform. If the intermediate logic drops or invents
-    a genre tag, this test catches it.
-*/
+-- splits genres straight from staging (skipping the intermediate layer) and checks the
+-- bridge table ends up with the same number of title/genre pairs per platform
 
-{%- set platforms = ['amazon_prime', 'disney_plus', 'hulu', 'netflix'] -%}
+{% set platforms = ['amazon_prime', 'disney_plus', 'hulu', 'netflix'] %}
 
 with
 

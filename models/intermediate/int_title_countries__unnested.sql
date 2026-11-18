@@ -1,5 +1,3 @@
--- One row per title per production country: 'United States, India' becomes two rows.
-
 with
 
 titles as (
@@ -20,7 +18,7 @@ unnested as (
 
 ),
 
--- Netflix rows often end with a trailing comma ('United States,'), which leaves an empty element.
+-- trailing commas ('United States,') leave empty elements
 deduplicated as (
 
     select distinct

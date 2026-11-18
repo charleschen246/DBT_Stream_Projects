@@ -1,5 +1,3 @@
--- Grain: one row per title per production country. Resolves the many-to-many between fct_titles and dim_countries.
-
 with
 
 title_countries as (

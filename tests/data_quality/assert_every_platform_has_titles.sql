@@ -1,5 +1,4 @@
--- Every platform in the dimension must have titles in the fact table.
--- An empty platform usually means its source table failed to load.
+-- catches a source table that failed to load
 
 select dim_platforms.platform_id
 from {{ ref('dim_platforms') }} as dim_platforms

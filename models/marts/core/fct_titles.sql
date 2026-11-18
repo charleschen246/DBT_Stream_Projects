@@ -1,6 +1,3 @@
--- Grain: one row per title per platform.
--- Joins the enriched titles to the dimensions so every foreign key is guaranteed to resolve.
-
 with
 
 titles as (
@@ -46,13 +43,11 @@ country_counts as (
 final as (
 
     select
-        -- keys
         titles.title_key,
         platforms.platform_id,
         coalesce(ratings.rating_id, 'UNKNOWN') as rating_id,
         dates.date_day as date_added,
 
-        -- descriptors
         titles.show_id,
         titles.title,
         titles.content_type,
@@ -63,14 +58,12 @@ final as (
         titles.release_year,
         titles.release_decade,
 
-        -- measures
         titles.duration_minutes,
         titles.season_count,
         coalesce(genre_counts.genre_count, 0) as genre_count,
         coalesce(country_counts.country_count, 0) as country_count,
         titles.years_from_release_to_platform,
 
-        -- flags
         titles.is_movie,
         titles.had_misplaced_duration,
         titles.is_content_type_corrected

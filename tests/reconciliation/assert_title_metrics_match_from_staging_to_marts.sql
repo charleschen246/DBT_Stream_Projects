@@ -1,18 +1,8 @@
-/*
-    Reconciles staging -> marts for every platform and content type at once.
+-- per platform and content type: row count, distinct show_ids, sum of release_year and dated titles
+-- must match between staging and fct_titles. uses source_content_type on the mart side because
+-- int_titles__enriched corrects some content types.
 
-    Compares four numbers on both sides:
-      - title count               (rows dropped or duplicated?)
-      - distinct show_ids         (fan-out from a bad join?)
-      - release_year checksum     (values altered in flight?)
-      - titles with a date_added  (dates lost in a join?)
-
-    Returns one row per platform/content type where any number differs.
-    The mart side uses source_content_type: content_type itself can be corrected
-    in the intermediate layer (see int_titles__enriched).
-*/
-
-{%- set platforms = ['amazon_prime', 'disney_plus', 'hulu', 'netflix'] -%}
+{% set platforms = ['amazon_prime', 'disney_plus', 'hulu', 'netflix'] %}
 
 with
 

@@ -1,7 +1,3 @@
--- One row per title per genre: 'Dramas, International Movies' becomes two rows.
--- Each platform-specific label is also mapped to a cross-platform genre_group
--- (Netflix 'Dramas' and Hulu 'Drama' both become 'Drama').
-
 with
 
 titles as (
@@ -28,7 +24,7 @@ unnested as (
 
 ),
 
--- A trailing comma in the source leaves an empty element, and a genre can be listed twice.
+-- trailing commas leave empty elements, and some titles list a genre twice
 deduplicated as (
 
     select distinct

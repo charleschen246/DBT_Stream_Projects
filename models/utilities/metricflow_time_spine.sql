@@ -1,5 +1,3 @@
--- Daily date spine required by the dbt Semantic Layer (MetricFlow) and reused by dim_dates.
-
 with
 
 days as (

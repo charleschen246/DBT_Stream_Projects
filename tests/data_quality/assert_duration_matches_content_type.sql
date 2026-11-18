@@ -1,5 +1,3 @@
--- Movies are measured in minutes and TV shows in seasons, never the other way around.
-
 select
     title_key,
     platform_id,

@@ -1,5 +1,3 @@
--- Grain: one row per title per genre. Resolves the many-to-many between fct_titles and dim_genres.
-
 with
 
 title_genres as (

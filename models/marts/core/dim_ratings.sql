@@ -6,7 +6,6 @@ rating_mappings as (
 
 ),
 
--- The seed has one row per raw alias. Collapse it to one row per standardized rating.
 ratings as (
 
     select distinct
@@ -18,7 +17,7 @@ ratings as (
 
 ),
 
--- Fallback member so every fact row joins, even when the rating is missing or unmapped.
+-- so titles with a missing or unmapped rating still join
 unknown_member as (
 
     select

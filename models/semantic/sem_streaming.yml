@@ -1,11 +1,5 @@
 version: 2
 
-# dbt Semantic Layer (MetricFlow) definitions.
-# Example queries:
-#   dbt sl query --metrics total_titles,movie_share --group-by platform__platform_name
-#   mf query --metrics titles_added --group-by metric_time__year,platform__platform_name
-#   mf query --metrics genre_tagged_titles --group-by title_genre__genre_group,platform__platform_name
-
 semantic_models:
   - name: titles
     description: One row per title per platform. The main semantic model.

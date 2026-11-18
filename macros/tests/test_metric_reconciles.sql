@@ -1,20 +1,7 @@
 {#
-    Custom generic test: an aggregate on this model must equal the same aggregate on another model.
-
-    Used to prove nothing is dropped or duplicated as data moves stg -> int -> marts,
-    e.g. "fct_titles has the same number of Netflix movies as stg_streaming__netflix_titles".
-
-    Arguments:
-        compare_model       the upstream model to reconcile against
-        expression          aggregate on this model             (default: count(*))
-        compare_expression  aggregate on compare_model          (default: same as expression)
-        group_by            columns in this model to compare per group (optional)
-        compare_group_by    matching columns in compare_model, if named differently (default: group_by)
-        model_filter        WHERE clause for this model         (default: no filter)
-        compare_filter      WHERE clause for compare_model      (default: no filter)
-        tolerance           allowed absolute difference         (default: 0, exact match)
-
-    Returns one row per group whose values differ, so a passing test returns zero rows.
+    Fails when an aggregate on this model differs from the same aggregate on compare_model,
+    optionally per group. compare_group_by is for when the group column has a different name
+    in compare_model. Returns the mismatched groups.
 #}
 
 {% test metric_reconciles(

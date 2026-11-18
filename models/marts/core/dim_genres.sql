@@ -1,5 +1,3 @@
--- One row per platform genre label, with its cross-platform genre_group (a two-level hierarchy).
-
 with
 
 title_genres as (

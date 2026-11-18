@@ -9,12 +9,10 @@ source as (
 renamed as (
 
     select
-        -- keys
         {{ dbt_utils.generate_surrogate_key(["'amazon_prime'", 'show_id']) }} as title_key,
         'amazon_prime' as platform_id,
         {{ clean_text('show_id') }} as show_id,
 
-        -- attributes
         replace(lower({{ clean_text('type') }}), ' ', '_') as content_type,
         {{ clean_text('title') }} as title,
         {{ clean_text('director') }} as directors,
@@ -25,7 +23,6 @@ renamed as (
         {{ clean_text('duration') }} as duration,
         {{ clean_text('description') }} as description,
 
-        -- dates
         cast(release_year as {{ dbt.type_bigint() }}) as release_year,
         {{ parse_text_date('date_added') }} as date_added
 

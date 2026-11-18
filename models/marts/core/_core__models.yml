@@ -2,7 +2,6 @@ version: 2
 
 models:
 
-  # ---------------------------------------------------------------- dimensions
   - name: dim_platforms
     description: One row per streaming platform. Sourced from the `platforms` seed.
     columns:
@@ -84,7 +83,6 @@ models:
       - name: first_day_of_year
         data_type: date
 
-  # ---------------------------------------------------------------- facts
   - name: fct_titles
     description: >
       One row per title per platform. The central fact table of the star schema:
@@ -220,7 +218,6 @@ models:
         description: True when content_type was corrected because the duration contradicted it (e.g. a Hulu 'Movie' lasting '2 Seasons').
         data_tests: [not_null]
 
-  # ---------------------------------------------------------------- bridges
   - name: bridge_title_genres
     description: One row per title per genre. Links fct_titles to dim_genres.
     data_tests:

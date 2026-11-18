@@ -1,7 +1,4 @@
-{#
-    Custom generic test: the column has no empty or whitespace-only strings.
-    (not_null passes on '' and '   ', which are just as useless downstream.)
-#}
+{# not_null lets empty strings through #}
 
 {% test not_blank(model, column_name) %}
 

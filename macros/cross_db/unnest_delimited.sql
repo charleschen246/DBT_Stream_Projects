@@ -1,10 +1,4 @@
-{#
-    Renders a lateral join that explodes a delimited string column into one row per element.
-    Usage:
-        select t.title_key, trim(genre) as genre_name
-        from titles as t
-        {{ unnest_delimited('t.genres', 'genre') }}
-#}
+{# lateral join that turns 'a, b, c' into one row per element #}
 
 {% macro unnest_delimited(column, alias, delimiter=',') -%}
     {{ return(adapter.dispatch('unnest_delimited', 'streaming_analytics')(column, alias, delimiter)) }}

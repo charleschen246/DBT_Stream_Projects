@@ -1,7 +1,6 @@
 {{ config(severity='warn') }}
 
--- Warns when a platform publishes a rating code that isn't in the rating_mappings seed yet.
--- Those titles fall back to rating_id = 'UNKNOWN' until a row is added to the seed.
+-- rating codes missing from seeds/rating_mappings.csv
 
 select
     raw_rating,
