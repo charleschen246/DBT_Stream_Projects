@@ -1,0 +1,38 @@
+name: dbt CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  dbt-build:
+    name: dbt build (DuckDB fixture)
+    runs-on: ubuntu-latest
+    env:
+      DBT_PROFILES_DIR: ci
+      DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create fixture warehouse
+        run: python ci/create_fixture_db.py ci/streaming.duckdb
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Build and test every model
+        # source_database = the DuckDB catalog name (the .duckdb file name)
+        run: dbt build --vars '{source_database: streaming}'
+
+      - name: Validate semantic layer
+        run: mf validate-configs

@@ -1,5 +1,20 @@
-# you shouldn't commit these into source control
-# these are the default directory names, adjust/add to fit your needs
+# dbt artifacts
 target/
 dbt_packages/
 logs/
+.user.yml
+
+# local credentials - never commit these
+/profiles.yml
+*.json.key
+*service-account*.json
+
+# local tooling
+.venv/
+venv/
+__pycache__/
+*.duckdb
+*.duckdb.wal
+.DS_Store
+.vscode/
+.idea/

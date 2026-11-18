@@ -1,0 +1,53 @@
+version: 2
+
+sources:
+  - name: streaming
+    description: >
+      Raw title catalogs for four streaming platforms, loaded as-is from the public
+      Kaggle datasets by Shivam Bansal. All four tables share the same 12-column layout.
+      `show_id` values (s1, s2, ...) restart in every table, so they are only unique
+      within one platform.
+    database: "{{ var('source_database') }}"
+    schema: "{{ var('source_schema') }}"
+    tables:
+      - name: amazon_prime_titles
+        identifier: src_amazon_prime_titles
+        description: Every movie and TV show listed on Amazon Prime Video.
+        columns: &raw_title_columns
+          - name: show_id
+            description: Platform-specific identifier (s1, s2, ...).
+            data_tests:
+              - unique
+              - not_null
+          - name: type
+            description: "'Movie' or 'TV Show'."
+          - name: title
+          - name: director
+            description: Comma-separated list of directors.
+          - name: cast
+            description: Comma-separated list of cast members.
+          - name: country
+            description: Comma-separated list of production countries.
+          - name: date_added
+            description: Date the title was added to the platform, e.g. 'September 25, 2021'.
+          - name: release_year
+          - name: rating
+            description: Maturity rating. The rating systems differ by platform.
+          - name: duration
+            description: "'<n> min' for movies, '<n> Season(s)' for TV shows."
+          - name: listed_in
+            description: Comma-separated list of genres.
+          - name: description
+
+      - name: disney_plus_titles
+        description: Every movie and TV show listed on Disney+.
+        columns: *raw_title_columns
+
+      - name: hulu_titles
+        description: Every movie and TV show listed on Hulu.
+        columns: *raw_title_columns
+
+      - name: netflix_titles
+        identifier: src_netflix_titles
+        description: Every movie and TV show listed on Netflix.
+        columns: *raw_title_columns

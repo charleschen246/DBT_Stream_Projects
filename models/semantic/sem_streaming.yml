@@ -1,0 +1,202 @@
+version: 2
+
+# dbt Semantic Layer (MetricFlow) definitions.
+# Example queries:
+#   dbt sl query --metrics total_titles,movie_share --group-by platform__platform_name
+#   mf query --metrics titles_added --group-by metric_time__year,platform__platform_name
+#   mf query --metrics genre_tagged_titles --group-by title_genre__genre_name --order -genre_tagged_titles --limit 10
+
+semantic_models:
+  - name: titles
+    description: One row per title per platform. The main semantic model.
+    model: ref('fct_titles')
+    defaults:
+      agg_time_dimension: date_added
+    entities:
+      - name: title
+        type: primary
+        expr: title_key
+      - name: platform
+        type: foreign
+        expr: platform_id
+      - name: rating
+        type: foreign
+        expr: rating_id
+    dimensions:
+      - name: date_added
+        type: time
+        type_params:
+          time_granularity: day
+      - name: content_type
+        type: categorical
+      - name: release_year
+        type: categorical
+      - name: release_decade
+        type: categorical
+      - name: is_movie
+        type: categorical
+    measures:
+      - name: title_count
+        description: Distinct titles.
+        agg: count_distinct
+        expr: title_key
+      - name: movie_count
+        agg: sum
+        expr: case when is_movie then 1 else 0 end
+      - name: tv_show_count
+        agg: sum
+        expr: case when is_movie then 0 else 1 end
+      - name: avg_movie_runtime_minutes
+        agg: average
+        expr: duration_minutes
+      - name: avg_seasons
+        agg: average
+        expr: season_count
+      - name: avg_years_from_release_to_platform
+        agg: average
+        expr: years_from_release_to_platform
+
+  - name: platforms
+    description: Streaming platform attributes.
+    model: ref('dim_platforms')
+    entities:
+      - name: platform
+        type: primary
+        expr: platform_id
+    dimensions:
+      - name: platform_name
+        type: categorical
+      - name: parent_company
+        type: categorical
+
+  - name: ratings
+    description: Standardized maturity ratings.
+    model: ref('dim_ratings')
+    entities:
+      - name: rating
+        type: primary
+        expr: rating_id
+    dimensions:
+      - name: rating_code
+        type: categorical
+        expr: rating_id
+      - name: rating_system
+        type: categorical
+      - name: audience_group
+        type: categorical
+
+  - name: title_genres
+    description: One row per title per genre. Use it for genre-level metrics.
+    model: ref('bridge_title_genres')
+    primary_entity: title_genre
+    defaults:
+      agg_time_dimension: date_added
+    entities:
+      - name: title
+        type: foreign
+        expr: title_key
+      - name: platform
+        type: foreign
+        expr: platform_id
+    dimensions:
+      - name: genre_name
+        type: categorical
+      - name: date_added
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: genre_tagged_title_count
+        agg: count_distinct
+        expr: title_key
+
+metrics:
+  - name: total_titles
+    label: Total Titles
+    description: Number of titles in the catalog.
+    type: simple
+    type_params:
+      measure: title_count
+
+  - name: movies
+    label: Movies
+    type: simple
+    type_params:
+      measure: movie_count
+
+  - name: tv_shows
+    label: TV Shows
+    type: simple
+    type_params:
+      measure: tv_show_count
+
+  - name: movie_share
+    label: Movie Share
+    description: Movies as a share of all titles.
+    type: ratio
+    type_params:
+      numerator: movies
+      denominator: total_titles
+
+  - name: avg_movie_runtime_minutes
+    label: Average Movie Runtime (min)
+    type: simple
+    type_params:
+      measure: avg_movie_runtime_minutes
+
+  - name: avg_seasons_per_show
+    label: Average Seasons per TV Show
+    type: simple
+    type_params:
+      measure: avg_seasons
+
+  - name: avg_years_from_release_to_platform
+    label: Average Years from Release to Platform
+    description: How old titles are, on average, when a platform adds them.
+    type: simple
+    type_params:
+      measure: avg_years_from_release_to_platform
+
+  - name: titles_added
+    label: Titles Added
+    description: Titles added to a platform. Group by metric_time to see additions over time. Titles with no date_added are excluded.
+    type: simple
+    type_params:
+      measure: title_count
+    filter: |
+      {{ Dimension('title__date_added') }} is not null
+
+  - name: cumulative_titles_added
+    label: Cumulative Titles Added
+    description: Running total of titles added, i.e. catalog size over time. At month or year grain it shows the value at the end of the period.
+    type: cumulative
+    type_params:
+      measure: title_count
+      cumulative_type_params:
+        period_agg: last
+
+  - name: titles_added_prior_year
+    label: Titles Added (Prior Year)
+    type: derived
+    type_params:
+      expr: titles_added
+      metrics:
+        - name: titles_added
+          offset_window: 1 year
+
+  - name: titles_added_yoy_growth
+    label: Titles Added YoY Growth
+    description: Year-over-year change in titles added. Group by metric_time__year.
+    type: derived
+    type_params:
+      expr: (titles_added - titles_added_prior_year) / nullif(titles_added_prior_year, 0)
+      metrics:
+        - name: titles_added
+        - name: titles_added_prior_year
+
+  - name: genre_tagged_titles
+    label: Titles per Genre
+    description: Titles carrying a genre tag. Group by title_genre__genre_name. A title with several genres counts once per genre.
+    type: simple
+    type_params:
+      measure: genre_tagged_title_count

@@ -1,0 +1,8 @@
+# Profile used by CI and for running the project locally without BigQuery access.
+streaming_analytics:
+  target: ci
+  outputs:
+    ci:
+      type: duckdb
+      path: ci/streaming.duckdb
+      threads: 4

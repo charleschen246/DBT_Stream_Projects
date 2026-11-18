@@ -1,0 +1,32 @@
+version: 2
+
+seeds:
+  - name: platforms
+    description: One row per streaming platform covered by the project.
+    columns:
+      - name: platform_id
+        data_tests: [unique, not_null]
+      - name: platform_name
+        data_tests: [unique, not_null]
+
+  - name: rating_mappings
+    description: >
+      Maps every raw rating code the platforms use to one standardized rating.
+      Aliases like UR, UNRATED and NOT_RATE all collapse to NR. Add a row here
+      when the `assert_all_source_ratings_are_mapped` test warns about a new code.
+    columns:
+      - name: raw_rating
+        data_tests: [unique, not_null]
+      - name: rating_id
+        data_tests: [not_null]
+      - name: audience_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['All Ages', 'Older Kids', 'Teens', 'Older Teens', 'Mature', 'Not Rated']
+      - name: audience_rank
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 5

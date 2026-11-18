@@ -1,0 +1,206 @@
+version: 2
+
+models:
+  # ---------------------------------------------------------------- dimensions
+  - name: dim_platforms
+    description: One row per streaming platform. Sourced from the `platforms` seed.
+    columns:
+      - name: platform_id
+        description: '{{ doc("platform_id") }}'
+        data_tests: [unique, not_null]
+      - name: platform_name
+        data_tests: [unique, not_null]
+      - name: parent_company
+        data_tests: [not_null]
+
+  - name: dim_ratings
+    description: One row per standardized maturity rating, plus an `UNKNOWN` member.
+    columns:
+      - name: rating_id
+        description: '{{ doc("rating_id") }}'
+        data_tests: [unique, not_null]
+      - name: rating_system
+        description: Which rating system the code belongs to (film, US TV, Prime Video, not rated).
+        data_tests: [not_null]
+      - name: audience_group
+        description: Audience bucket that lines ratings up across systems (All Ages, Older Kids, Teens, Older Teens, Mature).
+        data_tests: [not_null]
+      - name: audience_rank
+        description: Sort order for audience_group, from 0 (not rated) to 5 (mature).
+
+  - name: dim_genres
+    description: >
+      One row per genre label as the platforms publish it. Labels are not harmonized
+      across platforms, so Netflix's 'Dramas' and Hulu's 'Drama' are separate genres.
+    columns:
+      - name: genre_key
+        data_tests: [unique, not_null]
+      - name: genre_name
+        data_tests: [unique, not_null]
+
+  - name: dim_countries
+    description: One row per production country.
+    columns:
+      - name: country_key
+        data_tests: [unique, not_null]
+      - name: country_name
+        data_tests: [unique, not_null]
+
+  - name: dim_dates
+    description: Calendar dimension, one row per day.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  # ---------------------------------------------------------------- facts
+  - name: fct_titles
+    description: >
+      One row per title per platform. The central fact table of the star schema:
+      foreign keys to dim_platforms, dim_ratings and dim_dates; bridges to genres and countries.
+    data_tests:
+      # Reconciliation: every number in the mart must match the staging layer it came from.
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_stg_amazon_prime__titles_by_type
+          arguments:
+            compare_model: ref('stg_streaming__amazon_prime_titles')
+            model_filter: "platform_id = 'amazon_prime'"
+            group_by: [content_type]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_stg_disney_plus__titles_by_type
+          arguments:
+            compare_model: ref('stg_streaming__disney_plus_titles')
+            model_filter: "platform_id = 'disney_plus'"
+            group_by: [content_type]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_stg_hulu__titles_by_type
+          arguments:
+            compare_model: ref('stg_streaming__hulu_titles')
+            model_filter: "platform_id = 'hulu'"
+            group_by: [content_type]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_stg_netflix__titles_by_type
+          arguments:
+            compare_model: ref('stg_streaming__netflix_titles')
+            model_filter: "platform_id = 'netflix'"
+            group_by: [content_type]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_int__dated_titles_by_platform
+          arguments:
+            compare_model: ref('int_titles__enriched')
+            expression: count(date_added)
+            group_by: [platform_id]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_int__runtime_and_seasons_by_platform
+          arguments:
+            compare_model: ref('int_titles__enriched')
+            expression: coalesce(sum(duration_minutes), 0) + coalesce(sum(season_count), 0)
+            group_by: [platform_id]
+      - metric_reconciles:
+          name: reconcile_fct_titles_vs_bridge__genre_assignments
+          arguments:
+            compare_model: ref('bridge_title_genres')
+            expression: sum(genre_count)
+            compare_expression: count(*)
+            group_by: [platform_id]
+    columns:
+      - name: title_key
+        description: '{{ doc("title_key") }}'
+        data_tests: [unique, not_null]
+      - name: platform_id
+        description: '{{ doc("platform_id") }}'
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_platforms')
+                field: platform_id
+      - name: rating_id
+        description: '{{ doc("rating_id") }}'
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ratings')
+                field: rating_id
+      - name: date_added
+        description: '{{ doc("date_added") }}'
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_day
+      - name: show_id
+        description: Source identifier, unique within a platform.
+      - name: content_type
+        description: '{{ doc("content_type") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['movie', 'tv_show']
+      - name: release_year
+        description: '{{ doc("release_year") }}'
+      - name: duration_minutes
+        description: '{{ doc("duration_minutes") }}'
+      - name: season_count
+        description: '{{ doc("season_count") }}'
+      - name: genre_count
+        description: Number of genres the title is tagged with.
+      - name: country_count
+        description: Number of production countries listed for the title.
+      - name: is_movie
+        data_tests: [not_null]
+
+  # ---------------------------------------------------------------- bridges
+  - name: bridge_title_genres
+    description: One row per title per genre. Links fct_titles to dim_genres.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [title_key, genre_key]
+      - metric_reconciles:
+          name: reconcile_bridge_genres_vs_int__assignments_by_platform
+          arguments:
+            compare_model: ref('int_title_genres__unnested')
+            group_by: [platform_id]
+    columns:
+      - name: title_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_titles')
+                field: title_key
+      - name: genre_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_genres')
+                field: genre_key
+
+  - name: bridge_title_countries
+    description: One row per title per production country. Links fct_titles to dim_countries.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [title_key, country_key]
+      - metric_reconciles:
+          name: reconcile_bridge_countries_vs_int__assignments_by_platform
+          arguments:
+            compare_model: ref('int_title_countries__unnested')
+            group_by: [platform_id]
+    columns:
+      - name: title_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_titles')
+                field: title_key
+      - name: country_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_countries')
+                field: country_key

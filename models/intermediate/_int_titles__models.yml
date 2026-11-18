@@ -1,0 +1,145 @@
+version: 2
+
+models:
+  - name: int_titles__unioned
+    description: All four platform catalogs stacked into one table. Still one row per platform title.
+    columns:
+      - name: title_key
+        description: '{{ doc("title_key") }}'
+        data_tests:
+          - unique
+          - not_null
+      - name: platform_id
+        description: '{{ doc("platform_id") }}'
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('platforms')
+                field: platform_id
+
+  - name: int_titles__enriched
+    description: >
+      Business logic for a title: fixes durations that were typed into the rating
+      column, splits duration into minutes or seasons, maps raw ratings to a standard
+      rating, and adds derived fields like release decade.
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('int_titles__unioned')
+    columns:
+      - name: title_key
+        description: '{{ doc("title_key") }}'
+        data_tests:
+          - unique
+          - not_null
+      - name: rating_id
+        description: '{{ doc("rating_id") }}'
+        data_tests:
+          - not_null
+      - name: raw_rating
+        description: Upper-cased source rating, or NULL if the source value was actually a duration.
+      - name: duration_minutes
+        description: '{{ doc("duration_minutes") }}'
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000
+      - name: season_count
+        description: '{{ doc("season_count") }}'
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 100
+      - name: release_decade
+        description: Decade of release, e.g. 1990.
+      - name: years_from_release_to_platform
+        description: Years between release and being added to the platform. NULL when date_added is unknown.
+      - name: had_misplaced_duration
+        description: True when the source had the duration in the rating column.
+        data_tests:
+          - not_null
+
+  - name: int_title_genres__unnested
+    description: One row per title per genre, exploded from the comma-separated `genres` column.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [title_key, genre_name]
+    columns:
+      - name: title_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_titles__enriched')
+                field: title_key
+      - name: genre_name
+        data_tests:
+          - not_null
+          - not_blank
+
+  - name: int_title_countries__unnested
+    description: One row per title per production country, exploded from the comma-separated `countries` column.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [title_key, country_name]
+    columns:
+      - name: title_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_titles__enriched')
+                field: title_key
+      - name: country_name
+        data_tests:
+          - not_null
+          - not_blank
+
+unit_tests:
+  - name: test_duration_is_parsed_into_minutes_or_seasons
+    description: Movies get minutes, TV shows get seasons, and nothing crosses over.
+    model: int_titles__enriched
+    given:
+      - input: ref('int_titles__unioned')
+        rows:
+          - {title_key: a, content_type: movie,   rating: PG,    duration: '90 min',    release_year: 2001}
+          - {title_key: b, content_type: tv_show, rating: TV-MA, duration: '1 Season',  release_year: 2015}
+          - {title_key: c, content_type: tv_show, rating: TV-14, duration: '3 Seasons', release_year: 2019}
+          - {title_key: d, content_type: movie,   rating: R,     duration: null,        release_year: 1999}
+      - input: ref('rating_mappings')
+        rows:
+          - {raw_rating: PG,    rating_id: PG}
+          - {raw_rating: TV-MA, rating_id: TV-MA}
+          - {raw_rating: TV-14, rating_id: TV-14}
+          - {raw_rating: R,     rating_id: R}
+    expect:
+      rows:
+        - {title_key: a, duration_minutes: 90,   season_count: null, release_decade: 2000, is_movie: true}
+        - {title_key: b, duration_minutes: null, season_count: 1,    release_decade: 2010, is_movie: false}
+        - {title_key: c, duration_minutes: null, season_count: 3,    release_decade: 2010, is_movie: false}
+        - {title_key: d, duration_minutes: null, season_count: null, release_decade: 1990, is_movie: true}
+
+  - name: test_duration_misplaced_in_rating_column_is_moved_back
+    description: >
+      Netflix has rows like rating = '74 MIN' with an empty duration. The value should
+      move to duration, and the rating should become UNKNOWN.
+    model: int_titles__enriched
+    given:
+      - input: ref('int_titles__unioned')
+        rows:
+          - {title_key: a, content_type: movie, rating: 74 MIN, duration: null}
+          - {title_key: b, content_type: movie, rating: UR,     duration: '84 min'}
+          - {title_key: c, content_type: movie, rating: XYZ,    duration: '60 min'}
+      - input: ref('rating_mappings')
+        rows:
+          - {raw_rating: UR, rating_id: NR}
+    expect:
+      rows:
+        - {title_key: a, raw_rating: null, rating_id: UNKNOWN, duration: '74 min', duration_minutes: 74, had_misplaced_duration: true}
+        - {title_key: b, raw_rating: UR,   rating_id: NR,      duration: '84 min', duration_minutes: 84, had_misplaced_duration: false}
+        - {title_key: c, raw_rating: XYZ,  rating_id: UNKNOWN, duration: '60 min', duration_minutes: 60, had_misplaced_duration: false}

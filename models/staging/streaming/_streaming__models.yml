@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_streaming__amazon_prime_titles
+    description: >
+      One row per Amazon Prime Video title. Light cleanup only: columns renamed,
+      whitespace trimmed, empty strings turned into NULL, `date_added` parsed and
+      `release_year` cast. No business logic.
+    columns: &staging_title_columns
+      - name: title_key
+        description: '{{ doc("title_key") }}'
+        data_tests:
+          - unique
+          - not_null
+      - name: platform_id
+        description: '{{ doc("platform_id") }}'
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['amazon_prime', 'disney_plus', 'hulu', 'netflix']
+      - name: show_id
+        description: Identifier from the source system. Unique only within a platform.
+        data_tests:
+          - unique
+          - not_null
+          - not_blank
+      - name: content_type
+        description: '{{ doc("content_type") }}'
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['movie', 'tv_show']
+      - name: title
+        data_tests:
+          - not_null
+      - name: directors
+        description: Comma-separated list of directors.
+      - name: cast_members
+        description: Comma-separated list of cast members. Renamed from `cast`, which is a reserved word.
+      - name: countries
+        description: Comma-separated list of production countries.
+      - name: genres
+        description: Comma-separated list of genres. Renamed from `listed_in`.
+      - name: rating
+        description: Raw maturity rating, upper-cased. Mapped to a standard rating in the intermediate layer.
+      - name: duration
+        description: "Raw duration text, e.g. '90 min' or '2 Seasons'. Parsed in the intermediate layer."
+      - name: description
+      - name: release_year
+        description: '{{ doc("release_year") }}'
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1900
+                max_value: 2030
+      - name: date_added
+        description: '{{ doc("date_added") }}'
+
+  - name: stg_streaming__disney_plus_titles
+    description: One row per Disney+ title. Same cleanup as the other staging models.
+    columns: *staging_title_columns
+
+  - name: stg_streaming__hulu_titles
+    description: One row per Hulu title. Same cleanup as the other staging models.
+    columns: *staging_title_columns
+
+  - name: stg_streaming__netflix_titles
+    description: One row per Netflix title. Same cleanup as the other staging models.
+    columns: *staging_title_columns

@@ -1,0 +1,28 @@
+raw_rating,rating_id,rating_system,audience_group,audience_rank
+G,G,Film (MPA),All Ages,1
+PG,PG,Film (MPA),Older Kids,2
+PG-13,PG-13,Film (MPA),Teens,3
+R,R,Film (MPA),Mature,5
+NC-17,NC-17,Film (MPA),Mature,5
+TV-Y,TV-Y,US TV,All Ages,1
+TV-G,TV-G,US TV,All Ages,1
+TV-Y7,TV-Y7,US TV,Older Kids,2
+TV-Y7-FV,TV-Y7-FV,US TV,Older Kids,2
+TV-PG,TV-PG,US TV,Older Kids,2
+TV-14,TV-14,US TV,Teens,3
+TV-MA,TV-MA,US TV,Mature,5
+ALL,ALL,Prime Video,All Ages,1
+ALL_AGES,ALL,Prime Video,All Ages,1
+7+,7+,Prime Video,Older Kids,2
+13+,13+,Prime Video,Teens,3
+16+,16+,Prime Video,Older Teens,4
+16,16+,Prime Video,Older Teens,4
+AGES_16_,16+,Prime Video,Older Teens,4
+18+,18+,Prime Video,Mature,5
+AGES_18_,18+,Prime Video,Mature,5
+NR,NR,Not Rated,Not Rated,0
+UR,NR,Not Rated,Not Rated,0
+TV-NR,NR,Not Rated,Not Rated,0
+UNRATED,NR,Not Rated,Not Rated,0
+NOT RATED,NR,Not Rated,Not Rated,0
+NOT_RATE,NR,Not Rated,Not Rated,0
