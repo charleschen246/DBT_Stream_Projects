@@ -32,7 +32,8 @@ jobs:
 
       - name: Build and test every model
         # source_database = the DuckDB catalog name (the .duckdb file name)
-        run: dbt build --vars '{source_database: streaming}'
+        run: |
+          dbt build --vars '{source_database: streaming}'
 
       - name: Validate semantic layer
         run: mf validate-configs
