@@ -53,7 +53,7 @@ duration_parsed as (
 
     select
         *,
-        {{ dbt.safe_cast(dbt.split_part('duration', "' '", 1), dbt.type_int()) }} as duration_value,
+        {{ dbt.safe_cast(dbt.split_part('duration', "' '", 1), dbt.type_bigint()) }} as duration_value,
         lower({{ dbt.split_part('duration', "' '", 2) }}) as duration_unit
     from realigned
 

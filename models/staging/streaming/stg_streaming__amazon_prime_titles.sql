@@ -26,7 +26,7 @@ renamed as (
         {{ clean_text('description') }} as description,
 
         -- dates
-        cast(release_year as {{ dbt.type_int() }}) as release_year,
+        cast(release_year as {{ dbt.type_bigint() }}) as release_year,
         {{ parse_text_date('date_added') }} as date_added
 
     from source

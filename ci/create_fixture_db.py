@@ -4,7 +4,7 @@ Builds a small DuckDB database shaped like the raw Kaggle tables, for CI.
 The rows are synthetic, but each one exercises a real quirk of the source data:
 durations typed into the rating column, trailing commas in list columns,
 duplicate genres, leading spaces in dates, blank strings, missing dates,
-rating aliases, and a rating code that isn't in the mapping seed.
+rating aliases, and a rating code and a genre that aren't in the mapping seeds.
 
 Usage: python ci/create_fixture_db.py ci/streaming.duckdb
 """
@@ -39,7 +39,7 @@ TABLES = {
     "hulu_titles": [
         ("s1", "Movie", "Sample Stand-Up", None, None, None, "October 24, 2021", 2021, "TV-MA", None, "Comedy, Stand Up", "Missing duration."),
         ("s2", "TV Show", "Sample Horror Series", None, None, "United Kingdom", "October 23, 2021", 2020, "Unrated", "1 Season", "Horror", "Mixed-case rating."),
-        ("s3", "Movie", "Sample Indie Film", None, None, None, "   ", 2010, "   ", "95 min", "Drama", "Whitespace-only values."),
+        ("s3", "Movie", "Sample Indie Film", None, None, None, "   ", 2010, "   ", "95 min", "Drama, Mockumentary", "Whitespace-only values; unmapped genre."),
     ],
 }
 

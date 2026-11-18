@@ -46,11 +46,11 @@ flowchart LR
 
     OBT[(obt_titles<br/>One Big Table)]
     SL{{Semantic Layer<br/>12 metrics}}
-    SEEDS[/seeds: platforms,<br/>rating_mappings/]
+    SEEDS[/seeds: platforms,<br/>rating_mappings, genre_mappings/]
 
     S1 & S2 & S3 & S4 --> STG --> U --> E
     E --> G & C
-    SEEDS --> E & D1 & D2
+    SEEDS --> E & G & D1 & D2
     G --> D4 --> B1
     C --> D5 --> B2
     E --> F
@@ -93,6 +93,8 @@ the fact table (row count, counts by platform and content type, runtime totals, 
 | `show_id` restarts at `s1` on every platform | staging | Surrogate key `title_key = hash(platform_id, show_id)` |
 | Duration typed into the rating column (`rating = '74 min'`) | `int_titles__enriched` | Detected and moved back; covered by a unit test |
 | Four rating systems (MPA, US TV, Prime's `16+`, aliases `UR`/`UNRATED`/`NOT_RATE`) | `rating_mappings` seed | Mapped to a standard `rating_id` plus a comparable `audience_group` |
+| Every platform names genres differently (Netflix `Dramas`, Hulu `Drama`, Disney+ `Action-Adventure`) | `genre_mappings` seed | Each label rolls up to one of ~25 cross-platform `genre_group`s; unmapped labels fall back to `Other` and trigger a warning |
+| Amazon's `Arts, Entertainment, and Culture` genre contains commas, so it splits into three bogus labels | `genre_mappings` seed | All three pieces map to the same `Arts & Culture` group |
 | Trailing commas and duplicates in list columns (`'France, Belgium, '`) | unnest models | Empty elements filtered, then `distinct` |
 | Leading spaces in dates (`' April 4, 2017'`), blank strings | staging | `clean_text()` macro and a lenient date parser |
 | `cast` column is a reserved word | staging | Quoted with `adapter.quote()`, renamed to `cast_members` |
@@ -102,7 +104,7 @@ the fact table (row count, counts by platform and content type, runtime totals, 
 
 ## Testing strategy
 
-**152 tests (150 data tests + 2 unit tests) run on every `dbt build`.**
+**159 tests (157 data tests + 2 unit tests) run on every `dbt build`.**
 
 | Type | Examples | Purpose |
 |---|---|---|
@@ -231,10 +233,26 @@ dbt's built-in cross-database macros, so the same models run unchanged in produc
 │   ├── marts/reporting/             # obt_titles                (One Big Table for BI)
 │   ├── semantic/                    # semantic models + metrics
 │   └── utilities/                   # MetricFlow time spine
-├── seeds/                           # platforms, rating_mappings
+├── seeds/                           # platforms, rating_mappings, genre_mappings
 └── tests/
     ├── reconciliation/              # stg → marts reconciliation asserts
     └── data_quality/                # business-rule asserts
+```
+
+## Governance: contracts and access
+
+| Layer | `access` | Contract | Meaning |
+|---|---|---|---|
+| Staging | `private` | — | Only models in the `content_analytics` group may use them |
+| Intermediate | `protected` | — | Usable inside this project, not by other projects |
+| Marts | `public` | **enforced** | The stable interface for BI tools and other dbt projects |
+
+Every mart column declares its `data_type`. If a code change alters a column's name or type, the build
+fails before the table is replaced, so downstream dashboards don't break silently:
+
+```
+| column_name   | definition_type | contract_type | mismatch_reason    |
+| audience_rank | VARCHAR         | BIGINT        | data type mismatch |
 ```
 
 ## Conventions

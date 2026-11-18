@@ -1,6 +1,7 @@
 version: 2
 
 models:
+
   - name: obt_titles
     description: >
       One Big Table for BI tools and ad-hoc analysis: fct_titles with every dimension
@@ -41,36 +42,84 @@ models:
             expression: "(country_count = 0 and countries is null) or (country_count > 0 and countries is not null)"
     columns:
       - name: title_key
+        data_type: string
         description: '{{ doc("title_key") }}'
         data_tests: [unique, not_null]
+      - name: show_id
+        data_type: string
+      - name: title
+        data_type: string
       - name: content_type
+        data_type: string
         description: '{{ doc("content_type") }}'
+      - name: is_movie
+        data_type: boolean
+      - name: description
+        data_type: string
+      - name: directors
+        data_type: string
+      - name: cast_members
+        data_type: string
       - name: platform_id
+        data_type: string
         description: '{{ doc("platform_id") }}'
         data_tests: [not_null]
       - name: platform_name
+        data_type: string
         data_tests: [not_null]
       - name: parent_company
+        data_type: string
         data_tests: [not_null]
       - name: rating_id
+        data_type: string
         description: '{{ doc("rating_id") }}'
         data_tests: [not_null]
+      - name: rating_system
+        data_type: string
       - name: audience_group
+        data_type: string
         description: Audience bucket that lines ratings up across rating systems.
         data_tests: [not_null]
+      - name: audience_rank
+        data_type: bigint
       - name: release_year
+        data_type: bigint
         description: '{{ doc("release_year") }}'
+      - name: release_decade
+        data_type: bigint
       - name: date_added
+        data_type: date
         description: '{{ doc("date_added") }}'
       - name: added_year
+        data_type: bigint
         description: Calendar year of date_added. NULL when date_added is unknown.
+      - name: added_quarter
+        data_type: bigint
+      - name: added_month
+        data_type: bigint
       - name: added_month_start
+        data_type: date
         description: First day of the month the title was added. Handy for monthly trend charts.
+      - name: years_from_release_to_platform
+        data_type: bigint
       - name: duration_minutes
+        data_type: bigint
         description: '{{ doc("duration_minutes") }}'
       - name: season_count
+        data_type: bigint
         description: '{{ doc("season_count") }}'
+      - name: genre_count
+        data_type: bigint
       - name: genres
+        data_type: string
         description: Comma-separated, alphabetically sorted list of genres.
+      - name: genre_groups
+        data_type: string
+        description: Comma-separated, sorted list of the title's cross-platform genre groups (from genre_mappings).
+      - name: country_count
+        data_type: bigint
       - name: countries
+        data_type: string
         description: Comma-separated, alphabetically sorted list of production countries.
+      - name: had_misplaced_duration
+        data_type: boolean

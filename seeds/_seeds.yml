@@ -9,6 +9,18 @@ seeds:
       - name: platform_name
         data_tests: [unique, not_null]
 
+  - name: genre_mappings
+    description: >
+      Maps each platform's genre labels to one cross-platform genre_group. Matching is
+      case-insensitive. Includes 'Arts', 'Entertainment' and 'and Culture', the pieces of
+      Amazon's 'Arts, Entertainment, and Culture' label after comma splitting. Add a row when
+      `assert_all_source_genres_are_mapped` warns about a new label.
+    columns:
+      - name: raw_genre
+        data_tests: [unique, not_null]
+      - name: genre_group
+        data_tests: [not_null]
+
   - name: rating_mappings
     description: >
       Maps every raw rating code the platforms use to one standardized rating.

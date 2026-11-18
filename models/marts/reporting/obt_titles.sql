@@ -44,7 +44,8 @@ genres_rolled_up as (
 
     select
         title_key,
-        {{ dbt.listagg('genre_name', "', '", 'order by genre_name') }} as genres
+        {{ dbt.listagg('genre_name', "', '", 'order by genre_name') }} as genres,
+        {{ dbt.listagg('distinct genre_group', "', '", 'order by genre_group') }} as genre_groups
     from title_genres
     group by title_key
 
@@ -103,6 +104,7 @@ final as (
         -- genres and countries
         titles.genre_count,
         genres_rolled_up.genres,
+        genres_rolled_up.genre_groups,
         titles.country_count,
         countries_rolled_up.countries,
 

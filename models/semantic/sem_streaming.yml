@@ -4,7 +4,7 @@ version: 2
 # Example queries:
 #   dbt sl query --metrics total_titles,movie_share --group-by platform__platform_name
 #   mf query --metrics titles_added --group-by metric_time__year,platform__platform_name
-#   mf query --metrics genre_tagged_titles --group-by title_genre__genre_name --order -genre_tagged_titles --limit 10
+#   mf query --metrics genre_tagged_titles --group-by title_genre__genre_group,platform__platform_name
 
 semantic_models:
   - name: titles
@@ -101,6 +101,9 @@ semantic_models:
     dimensions:
       - name: genre_name
         type: categorical
+      - name: genre_group
+        type: categorical
+        description: Cross-platform genre, e.g. Netflix 'Dramas' and Hulu 'Drama' both map to 'Drama'.
       - name: date_added
         type: time
         type_params:
@@ -196,7 +199,7 @@ metrics:
 
   - name: genre_tagged_titles
     label: Titles per Genre
-    description: Titles carrying a genre tag. Group by title_genre__genre_name. A title with several genres counts once per genre.
+    description: Titles carrying a genre tag. Group by title_genre__genre_group (cross-platform) or title_genre__genre_name (raw label). A title with several genres counts once per genre.
     type: simple
     type_params:
       measure: genre_tagged_title_count

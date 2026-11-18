@@ -1,56 +1,88 @@
 version: 2
 
 models:
+
   # ---------------------------------------------------------------- dimensions
   - name: dim_platforms
     description: One row per streaming platform. Sourced from the `platforms` seed.
     columns:
       - name: platform_id
+        data_type: string
         description: '{{ doc("platform_id") }}'
         data_tests: [unique, not_null]
       - name: platform_name
+        data_type: string
         data_tests: [unique, not_null]
       - name: parent_company
+        data_type: string
         data_tests: [not_null]
 
   - name: dim_ratings
     description: One row per standardized maturity rating, plus an `UNKNOWN` member.
     columns:
       - name: rating_id
+        data_type: string
         description: '{{ doc("rating_id") }}'
         data_tests: [unique, not_null]
       - name: rating_system
+        data_type: string
         description: Which rating system the code belongs to (film, US TV, Prime Video, not rated).
         data_tests: [not_null]
       - name: audience_group
+        data_type: string
         description: Audience bucket that lines ratings up across systems (All Ages, Older Kids, Teens, Older Teens, Mature).
         data_tests: [not_null]
       - name: audience_rank
+        data_type: bigint
         description: Sort order for audience_group, from 0 (not rated) to 5 (mature).
 
   - name: dim_genres
     description: >
-      One row per genre label as the platforms publish it. Labels are not harmonized
-      across platforms, so Netflix's 'Dramas' and Hulu's 'Drama' are separate genres.
+      One row per genre label as the platforms publish it, rolled up to a cross-platform
+      genre_group. Netflix's 'Dramas' and Hulu's 'Drama' are separate labels but share the
+      group 'Drama'.
     columns:
       - name: genre_key
+        data_type: string
         data_tests: [unique, not_null]
       - name: genre_name
+        data_type: string
         data_tests: [unique, not_null]
+      - name: genre_group
+        data_type: string
+        description: Cross-platform genre from the genre_mappings seed; 'Other' when unmapped.
+        data_tests: [not_null]
+      - name: is_genre_mapped
+        data_type: boolean
 
   - name: dim_countries
     description: One row per production country.
     columns:
       - name: country_key
+        data_type: string
         data_tests: [unique, not_null]
       - name: country_name
+        data_type: string
         data_tests: [unique, not_null]
 
   - name: dim_dates
     description: Calendar dimension, one row per day.
     columns:
       - name: date_day
+        data_type: date
         data_tests: [unique, not_null]
+      - name: calendar_year
+        data_type: bigint
+      - name: calendar_quarter
+        data_type: bigint
+      - name: calendar_month
+        data_type: bigint
+      - name: day_of_month
+        data_type: bigint
+      - name: first_day_of_month
+        data_type: date
+      - name: first_day_of_year
+        data_type: date
 
   # ---------------------------------------------------------------- facts
   - name: fct_titles
@@ -104,9 +136,11 @@ models:
             group_by: [platform_id]
     columns:
       - name: title_key
+        data_type: string
         description: '{{ doc("title_key") }}'
         data_tests: [unique, not_null]
       - name: platform_id
+        data_type: string
         description: '{{ doc("platform_id") }}'
         data_tests:
           - not_null
@@ -115,6 +149,7 @@ models:
                 to: ref('dim_platforms')
                 field: platform_id
       - name: rating_id
+        data_type: string
         description: '{{ doc("rating_id") }}'
         data_tests:
           - not_null
@@ -123,6 +158,7 @@ models:
                 to: ref('dim_ratings')
                 field: rating_id
       - name: date_added
+        data_type: date
         description: '{{ doc("date_added") }}'
         data_tests:
           - relationships:
@@ -130,25 +166,47 @@ models:
                 to: ref('dim_dates')
                 field: date_day
       - name: show_id
+        data_type: string
         description: Source identifier, unique within a platform.
+      - name: title
+        data_type: string
       - name: content_type
+        data_type: string
         description: '{{ doc("content_type") }}'
         data_tests:
           - accepted_values:
               arguments:
                 values: ['movie', 'tv_show']
+      - name: directors
+        data_type: string
+      - name: cast_members
+        data_type: string
+      - name: description
+        data_type: string
       - name: release_year
+        data_type: bigint
         description: '{{ doc("release_year") }}'
+      - name: release_decade
+        data_type: bigint
       - name: duration_minutes
+        data_type: bigint
         description: '{{ doc("duration_minutes") }}'
       - name: season_count
+        data_type: bigint
         description: '{{ doc("season_count") }}'
       - name: genre_count
+        data_type: bigint
         description: Number of genres the title is tagged with.
       - name: country_count
+        data_type: bigint
         description: Number of production countries listed for the title.
+      - name: years_from_release_to_platform
+        data_type: bigint
       - name: is_movie
+        data_type: boolean
         data_tests: [not_null]
+      - name: had_misplaced_duration
+        data_type: boolean
 
   # ---------------------------------------------------------------- bridges
   - name: bridge_title_genres
@@ -164,19 +222,30 @@ models:
             group_by: [platform_id]
     columns:
       - name: title_key
+        data_type: string
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('fct_titles')
                 field: title_key
+      - name: platform_id
+        data_type: string
+      - name: date_added
+        data_type: date
       - name: genre_key
+        data_type: string
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_genres')
                 field: genre_key
+
+      - name: genre_name
+        data_type: string
+      - name: genre_group
+        data_type: string
 
   - name: bridge_title_countries
     description: One row per title per production country. Links fct_titles to dim_countries.
@@ -191,16 +260,24 @@ models:
             group_by: [platform_id]
     columns:
       - name: title_key
+        data_type: string
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('fct_titles')
                 field: title_key
+      - name: platform_id
+        data_type: string
+      - name: date_added
+        data_type: date
       - name: country_key
+        data_type: string
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_countries')
                 field: country_key
+      - name: country_name
+        data_type: string

@@ -1,3 +1,5 @@
+-- One row per platform genre label, with its cross-platform genre_group (a two-level hierarchy).
+
 with
 
 title_genres as (
@@ -8,12 +10,17 @@ title_genres as (
 
 genres as (
 
-    select distinct genre_name
+    select distinct
+        genre_name,
+        genre_group,
+        is_genre_mapped
     from title_genres
 
 )
 
 select
     {{ dbt_utils.generate_surrogate_key(['genre_name']) }} as genre_key,
-    genre_name
+    genre_name,
+    genre_group,
+    is_genre_mapped
 from genres

@@ -26,22 +26,31 @@ vars:
 
 models:
   streaming_analytics:
+    +group: content_analytics
     +persist_docs:
       relation: true
       columns: true
     staging:
       +materialized: view
       +schema: staging
+      # Only models in the content_analytics group may ref staging models.
+      +access: private
       +docs:
         node_color: '#cd7f32'
     intermediate:
       +materialized: view
       +schema: intermediate
+      +access: protected
       +docs:
         node_color: '#c0c0c0'
     marts:
       +materialized: table
       +schema: marts
+      # Marts are the public interface: other projects may ref them, and the
+      # contract guarantees their column names and data types won't change silently.
+      +access: public
+      +contract:
+        enforced: true
       +docs:
         node_color: '#d4af37'
     utilities:
@@ -54,6 +63,8 @@ seeds:
 
 data_tests:
   streaming_analytics:
+    # Tests belong to the same group so they can check the private staging models.
+    +group: content_analytics
     # Keep failing rows in the warehouse so they can be inspected with SQL.
     +store_failures: true
     +schema: test_failures

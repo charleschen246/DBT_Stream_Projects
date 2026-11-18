@@ -13,7 +13,7 @@ ratings as (
         rating_id,
         rating_system,
         audience_group,
-        audience_rank
+        cast(audience_rank as {{ dbt.type_bigint() }}) as audience_rank
     from rating_mappings
 
 ),
@@ -25,7 +25,7 @@ unknown_member as (
         'UNKNOWN' as rating_id,
         'Unknown' as rating_system,
         'Unknown' as audience_group,
-        cast(null as {{ dbt.type_int() }}) as audience_rank
+        cast(null as {{ dbt.type_bigint() }}) as audience_rank
 
 )
 

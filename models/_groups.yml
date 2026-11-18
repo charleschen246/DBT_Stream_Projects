@@ -1,0 +1,7 @@
+version: 2
+
+groups:
+  - name: content_analytics
+    description: Owns the streaming catalog models, from staging through the marts.
+    owner:
+      name: Cheng Chen
