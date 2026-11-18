@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streaming Catalog Dashboard</title>
+<meta name="description" content="Netflix, Prime Video, Disney+ and Hulu catalogs compared. Every number comes from the dbt Semantic Layer.">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --neutral-fill: #c3c2b7;
+    --ord-1: #86b6ef; --ord-2: #5598e7; --ord-3: #2a78d6; --ord-4: #1c5cab; --ord-5: #104281;
+    --seq-0: #cde2fb; --seq-1: #9ec5f4; --seq-2: #6da7ec; --seq-3: #3987e5; --seq-4: #256abf; --seq-5: #184f95; --seq-6: #0d366b;
+    --tooltip-bg: #0b0b0b;
+    --tooltip-text: #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface-1: #1a1a19;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --neutral-fill: #52514e;
+      --ord-1: #184f95; --ord-2: #256abf; --ord-3: #3987e5; --ord-4: #86b6ef; --ord-5: #cde2fb;
+      --seq-0: #104281; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+      --tooltip-bg: #f0efec;
+      --tooltip-text: #0b0b0b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --neutral-fill: #52514e;
+    --ord-1: #184f95; --ord-2: #256abf; --ord-3: #3987e5; --ord-4: #86b6ef; --ord-5: #cde2fb;
+    --seq-0: #104281; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+    --tooltip-bg: #f0efec;
+    --tooltip-text: #0b0b0b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; }
+  header h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; font-weight: 650; }
+  header p { margin: 0; color: var(--text-secondary); max-width: 760px; }
+  .links { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+  a { color: var(--series-1); }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 28px 0; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .tile .label { color: var(--text-secondary); font-size: 13px; }
+  .tile .value { font-size: 30px; font-weight: 600; line-height: 1.2; margin-top: 4px; }
+  .tile .note { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  .card h2 { font-size: 16px; margin: 0 0 4px; font-weight: 600; }
+  .card .sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 12px; }
+  .card .insight { font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; border-left: 2px solid var(--baseline); padding-left: 10px; }
+  .chart { position: relative; width: 100%; }
+  svg { display: block; overflow: visible; }
+  svg text { fill: var(--text-secondary); font-size: 12px; font-family: inherit; }
+  svg .muted { fill: var(--text-muted); }
+  svg .value { fill: var(--text-primary); font-weight: 600; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .legend i.line { height: 2px; width: 14px; border-radius: 1px; }
+
+  details { margin-top: 12px; font-size: 13px; }
+  summary { cursor: pointer; color: var(--text-secondary); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10;
+    background: var(--tooltip-bg); color: var(--tooltip-text);
+    font-size: 12px; line-height: 1.45; padding: 8px 10px; border-radius: 8px;
+    max-width: 260px; opacity: 0; transition: opacity 80ms;
+    font-variant-numeric: tabular-nums;
+  }
+  .tooltip strong { display: block; margin-bottom: 2px; }
+  .tooltip .row { display: flex; align-items: center; gap: 6px; }
+  .tooltip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  footer { margin-top: 28px; color: var(--text-muted); font-size: 13px; }
+  footer ul { padding-left: 18px; margin: 8px 0; }
+
+  @media (max-width: 760px) {
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    header h1 { font-size: 23px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Streaming catalogs compared</h1>
+    <p>Netflix, Prime Video, Disney+ and Hulu, built with dbt on BigQuery. Every number on this page is a query
+      against the <strong>dbt Semantic Layer</strong>, so it matches any other tool that uses the same metric definitions.</p>
+    <div class="links">
+      <a href="https://github.com/charleschen246/DBT_Stream_Projects">GitHub repo</a>
+      <a href="index.html">dbt docs &amp; lineage</a>
+    </div>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Headline numbers"></section>
+
+  <section class="grid">
+    <article class="card">
+      <h2>Share of the catalog that is movies</h2>
+      <p class="sub">metric: <code>movie_share</code> · movies ÷ all titles</p>
+      <div class="chart" id="chart-movie-share"></div>
+      <p class="insight" id="insight-movie-share"></p>
+      <details><summary>View data</summary><div class="table-wrap" id="table-movie-share"></div></details>
+    </article>
+
+    <article class="card">
+      <h2>How old a title is when it arrives</h2>
+      <p class="sub">metric: <code>avg_years_from_release_to_platform</code> · years</p>
+      <div class="chart" id="chart-age"></div>
+      <p class="insight" id="insight-age"></p>
+      <details><summary>View data</summary><div class="table-wrap" id="table-age"></div></details>
+    </article>
+
+    <article class="card wide">
+      <h2>Titles added per year</h2>
+      <p class="sub">metric: <code>titles_added</code> by <code>metric_time__year</code> · 2015–2021 · Prime Video not shown (only 1.6% of its titles have a date added)</p>
+      <div class="legend" id="legend-added"></div>
+      <div class="chart" id="chart-added"></div>
+      <p class="insight" id="insight-added"></p>
+      <details><summary>View data</summary><div class="table-wrap" id="table-added"></div></details>
+    </article>
+
+    <article class="card wide">
+      <h2>Who each catalog is for</h2>
+      <p class="sub">metric: <code>total_titles</code> by <code>rating__audience_group</code> · four rating systems mapped to one audience scale · share of each platform's titles</p>
+      <div class="legend" id="legend-audience"></div>
+      <div class="chart" id="chart-audience"></div>
+      <p class="insight" id="insight-audience"></p>
+      <details><summary>View data</summary><div class="table-wrap" id="table-audience"></div></details>
+    </article>
+
+    <article class="card wide">
+      <h2>What each catalog is made of</h2>
+      <p class="sub">metric: <code>genre_tagged_titles</code> by <code>title_genre__genre_group</code> · share of each platform's titles tagged with the genre (a title can have several) · top 12 genre groups</p>
+      <div class="chart" id="chart-genres"></div>
+      <p class="insight" id="insight-genres"></p>
+      <details><summary>View data</summary><div class="table-wrap" id="table-genres"></div></details>
+    </article>
+  </section>
+
+  <footer>
+    <strong>Notes</strong>
+    <ul>
+      <li>Source: the public Kaggle catalogs (Shivam Bansal), snapshot from late 2021. 22,998 titles.</li>
+      <li>62 Hulu series labeled "Movie" in the source (e.g. a "Movie" lasting 2 seasons) are counted as TV shows. See <code>int_titles__enriched</code>.</li>
+      <li>Genre labels differ by platform (Netflix "Dramas", Hulu "Drama"); they're harmonized into genre groups by the <code>genre_mappings</code> seed.</li>
+      <li id="generated"></li>
+    </ul>
+  </footer>
+</main>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = __DASHBOARD_DATA__;
+
+// ---------- helpers ----------
+const SVG_NS = "http://www.w3.org/2000/svg";
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmt = (n) => n.toLocaleString("en-US");
+const pct = (n, d = 0) => (n * 100).toFixed(d) + "%";
+const el = (tag, attrs = {}, parent) => {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (parent) parent.appendChild(node);
+  return node;
+};
+const text = (parent, x, y, str, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = str; return t; };
+const niceMax = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p) * p; };
+
+// Bar with a 4px rounded data end and a square baseline end.
+function barPath(x, y, w, h, r = 4) {
+  r = Math.min(r, w, h / 2);
+  if (w <= 0) return "";
+  return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+}
+
+const tooltip = document.getElementById("tooltip");
+function showTip(evt, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  const pad = 14, { innerWidth: W, innerHeight: H } = window;
+  const r = tooltip.getBoundingClientRect();
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + r.width > W - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > H - 8) y = evt.clientY - r.height - pad;
+  tooltip.style.left = x + "px"; tooltip.style.top = y + "px";
+}
+const hideTip = () => { tooltip.style.opacity = 0; };
+
+function renderTable(id, headers, rows) {
+  const t = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${
+    rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  document.getElementById(id).innerHTML = t;
+}
+
+// ---------- data shaping ----------
+const PLATFORM_COLOR = { "Netflix": "--series-1", "Hulu": "--series-2", "Disney+": "--series-3" };
+const byPlatform = [...DATA.by_platform];
+const totals = Object.fromEntries(byPlatform.map(r => [r.platform__platform_name, r.total_titles]));
+const year = (v) => parseInt(String(v).slice(0, 4), 10);
+
+// ---------- tiles ----------
+function renderTiles() {
+  const o = DATA.overall[0];
+  const tiles = [
+    ["Titles across 4 platforms", fmt(o.total_titles), "one row per title per platform"],
+    ["Movies", pct(o.movie_share), `${fmt(o.movies)} movies · ${fmt(o.tv_shows)} TV shows`],
+    ["Avg. age when added", o.avg_years_from_release_to_platform.toFixed(1) + " yrs", "release year → date added"],
+    ["Largest catalog", byPlatform.reduce((a, b) => a.total_titles > b.total_titles ? a : b).platform__platform_name.replace("Amazon ", ""),
+      fmt(Math.max(...byPlatform.map(r => r.total_titles))) + " titles"],
+  ];
+  document.getElementById("tiles").innerHTML = tiles.map(([l, v, n]) =>
+    `<div class="tile"><div class="label">${l}</div><div class="value">${v}</div><div class="note">${n}</div></div>`).join("");
+}
+
+// ---------- horizontal bar chart (single series) ----------
+function hbar(containerId, rows, { value, label, format, refLine, refLabel, tip }) {
+  const root = document.getElementById(containerId);
+  root.innerHTML = "";
+  const W = root.clientWidth, rowH = 36, barH = 20, left = 132, right = 56, top = 8;
+  const H = top + rows.length * rowH + 22;
+  const svg = el("svg", { width: W, height: H, role: "img" }, root);
+  const plotW = Math.max(40, W - left - right);
+  const max = refLine ? Math.max(1, ...rows.map(value)) : niceMax(Math.max(...rows.map(value)));
+  const x = (v) => left + (v / max) * plotW;
+
+  // gridlines + axis ticks
+  const ticks = refLine ? [0, 0.25, 0.5, 0.75, 1] : [0, max / 4, max / 2, (3 * max) / 4, max];
+  ticks.forEach(t => {
+    el("line", { x1: x(t), x2: x(t), y1: top, y2: H - 22, stroke: css("--grid"), "stroke-width": 1 }, svg);
+    text(svg, x(t), H - 6, refLine ? pct(t) : (Number.isInteger(t) ? fmt(t) : t.toFixed(1)), { "text-anchor": "middle", class: "muted" });
+  });
+  el("line", { x1: left, x2: left, y1: top, y2: H - 22, stroke: css("--baseline"), "stroke-width": 1 }, svg);
+
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    text(svg, left - 10, y + barH / 2 + 4, label(r), { "text-anchor": "end" });
+    const w = x(value(r)) - left;
+    const bar = el("path", { d: barPath(left, y, w, barH), fill: css("--series-1") }, svg);
+    text(svg, left + w + 6, y + barH / 2 + 4, format(value(r)), { class: "value" });
+    // hit target spans the whole row
+    const hit = el("rect", { x: 0, y: top + i * rowH, width: W, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", e => { bar.setAttribute("opacity", 0.8); showTip(e, tip(r)); });
+    hit.addEventListener("mouseleave", () => { bar.setAttribute("opacity", 1); hideTip(); });
+  });
+
+  if (refLine !== undefined) {
+    el("line", { x1: x(refLine), x2: x(refLine), y1: top - 4, y2: H - 22, stroke: css("--text-muted"), "stroke-width": 1 }, svg);
+    text(svg, x(refLine) + 4, top + 2, refLabel, { class: "muted", "font-size": 11 });
+  }
+}
+
+function renderMovieShare() {
+  const rows = [...byPlatform].sort((a, b) => b.movie_share - a.movie_share);
+  hbar("chart-movie-share", rows, {
+    value: r => r.movie_share, label: r => r.platform__platform_name, format: v => pct(v),
+    refLine: 0.5, refLabel: "half movies",
+    tip: r => `<strong>${r.platform__platform_name}</strong>${pct(r.movie_share, 1)} movies<br>${fmt(r.movies)} movies · ${fmt(r.tv_shows)} TV shows`,
+  });
+  const hulu = byPlatform.find(r => r.platform__platform_name === "Hulu");
+  document.getElementById("insight-movie-share").textContent =
+    `Hulu is the only TV-first catalog (${pct(hulu.movie_share)} movies); the other three are 70–81% movies.`;
+  renderTable("table-movie-share", ["Platform", "Titles", "Movies", "TV shows", "Movie share"],
+    rows.map(r => [r.platform__platform_name, fmt(r.total_titles), fmt(r.movies), fmt(r.tv_shows), pct(r.movie_share, 1)]));
+}
+
+function renderAge() {
+  const rows = [...byPlatform].sort((a, b) => b.avg_years_from_release_to_platform - a.avg_years_from_release_to_platform);
+  hbar("chart-age", rows, {
+    value: r => r.avg_years_from_release_to_platform, label: r => r.platform__platform_name, format: v => v.toFixed(1) + " yrs",
+    tip: r => `<strong>${r.platform__platform_name}</strong>${r.avg_years_from_release_to_platform.toFixed(1)} years old on average when added`,
+  });
+  const d = byPlatform.find(r => r.platform__platform_name === "Disney+");
+  const n = byPlatform.find(r => r.platform__platform_name === "Netflix");
+  document.getElementById("insight-age").textContent =
+    `Disney+ is a vault: its titles are ${d.avg_years_from_release_to_platform.toFixed(1)} years old on arrival, ` +
+    `about ${(d.avg_years_from_release_to_platform / n.avg_years_from_release_to_platform).toFixed(1)}× Netflix's ${n.avg_years_from_release_to_platform.toFixed(1)}.`;
+  renderTable("table-age", ["Platform", "Avg. years from release to platform"],
+    rows.map(r => [r.platform__platform_name, r.avg_years_from_release_to_platform.toFixed(2)]));
+}
+
+// ---------- line chart ----------
+function renderAdded() {
+  const platforms = ["Netflix", "Hulu", "Disney+"];
+  const years = [2015, 2016, 2017, 2018, 2019, 2020, 2021];
+  const series = platforms.map(p => ({
+    name: p, color: css(PLATFORM_COLOR[p]),
+    points: years.map(y => {
+      const row = DATA.added_by_year.find(r => r.platform__platform_name === p && year(r.metric_time__year) === y);
+      return { year: y, value: row ? row.titles_added : null };
+    }),
+  }));
+  document.getElementById("legend-added").innerHTML =
+    series.map(s => `<span><i class="line" style="background:${s.color}"></i>${s.name}</span>`).join("");
+
+  const root = document.getElementById("chart-added");
+  root.innerHTML = "";
+  const W = root.clientWidth, H = 280, left = 48, right = 72, top = 12, bottom = 28;
+  const svg = el("svg", { width: W, height: H, role: "img" }, root);
+  const max = niceMax(Math.max(...series.flatMap(s => s.points.map(p => p.value || 0))));
+  const x = (y) => left + ((y - years[0]) / (years.length - 1)) * (W - left - right);
+  const yv = (v) => top + (1 - v / max) * (H - top - bottom);
+
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i;
+    el("line", { x1: left, x2: W - right, y1: yv(v), y2: yv(v), stroke: css(i === 0 ? "--baseline" : "--grid"), "stroke-width": 1 }, svg);
+    text(svg, left - 8, yv(v) + 4, fmt(v), { "text-anchor": "end", class: "muted" });
+  }
+  years.forEach(y => text(svg, x(y), H - 8, y, { "text-anchor": "middle", class: "muted" }));
+
+  // lines: a series starts at its first year with data (Disney+ launched in late 2019)
+  series.forEach(s => {
+    const pts = s.points.filter(p => p.value !== null);
+    el("path", {
+      d: pts.map((p, i) => `${i ? "L" : "M"}${x(p.year)},${yv(p.value)}`).join(" "),
+      fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round",
+    }, svg);
+    const last = pts[pts.length - 1];
+    el("circle", { cx: x(last.year), cy: yv(last.value), r: 4, fill: s.color, stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+    s.labelY = yv(last.value);
+  });
+  // direct end labels, nudged apart only if they would overlap
+  const labels = [...series].sort((a, b) => a.labelY - b.labelY);
+  for (let i = 1; i < labels.length; i++) labels[i].labelY = Math.max(labels[i].labelY, labels[i - 1].labelY + 15);
+  labels.forEach(s => text(svg, W - right + 10, s.labelY + 4, s.name, { class: "value" }));
+
+  // crosshair + tooltip
+  const cross = el("line", { y1: top, y2: H - bottom, stroke: css("--text-muted"), "stroke-width": 1, opacity: 0 }, svg);
+  const dots = series.map(s => el("circle", { r: 4, fill: s.color, stroke: css("--surface-1"), "stroke-width": 2, opacity: 0 }, svg));
+  const hit = el("rect", { x: left, y: top, width: W - left - right, height: H - top - bottom, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", e => {
+    const bx = svg.getBoundingClientRect().left;
+    const yr = years.reduce((a, b) => Math.abs(x(b) - (e.clientX - bx)) < Math.abs(x(a) - (e.clientX - bx)) ? b : a);
+    cross.setAttribute("x1", x(yr)); cross.setAttribute("x2", x(yr)); cross.setAttribute("opacity", 1);
+    const rows = series.map((s, i) => {
+      const p = s.points.find(p => p.year === yr);
+      if (p.value === null) { dots[i].setAttribute("opacity", 0); return `<div class="row"><i style="background:${s.color}"></i>${s.name}: n/a</div>`; }
+      dots[i].setAttribute("cx", x(yr)); dots[i].setAttribute("cy", yv(p.value)); dots[i].setAttribute("opacity", 1);
+      return `<div class="row"><i style="background:${s.color}"></i>${s.name}: ${fmt(p.value)}</div>`;
+    });
+    showTip(e, `<strong>${yr}</strong>${rows.join("")}`);
+  });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); hideTip(); });
+
+  const nf = series[0].points, hl = series[1].points;
+  const peak = nf.reduce((a, b) => (b.value > a.value ? b : a));
+  document.getElementById("insight-added").textContent =
+    `Netflix's additions peaked in ${peak.year} (${fmt(peak.value)}) and have slowed since, while Hulu kept accelerating to ${fmt(hl[6].value)} in 2021. ` +
+    `Disney+ front-loaded its library at launch in 2019.`;
+  renderTable("table-added", ["Year", ...platforms], years.map((y, i) => [y, ...series.map(s => s.points[i].value === null ? "—" : fmt(s.points[i].value))]));
+}
+
+// ---------- 100% stacked bars (ordinal audience scale) ----------
+function renderAudience() {
+  const groups = [
+    ["All Ages", "--ord-1"], ["Older Kids", "--ord-2"], ["Teens", "--ord-3"], ["Older Teens", "--ord-4"], ["Mature", "--ord-5"],
+    ["Not Rated", "--neutral-fill"], ["Unknown", "--neutral-fill"],
+  ];
+  const platforms = [...byPlatform].sort((a, b) => b.total_titles - a.total_titles).map(r => r.platform__platform_name);
+  const count = (p, g) => (DATA.audience_mix.find(r => r.platform__platform_name === p && r.rating__audience_group === g) || {}).total_titles || 0;
+
+  document.getElementById("legend-audience").innerHTML = groups
+    .filter(([g]) => g !== "Unknown")
+    .map(([g, c]) => `<span><i style="background:${css(c)}"></i>${g === "Not Rated" ? "Not rated / unknown" : g}</span>`).join("");
+
+  const root = document.getElementById("chart-audience");
+  root.innerHTML = "";
+  const W = root.clientWidth, rowH = 40, barH = 22, left = 132, right = 16, top = 4;
+  const H = top + platforms.length * rowH + 22;
+  const svg = el("svg", { width: W, height: H, role: "img" }, root);
+  const plotW = W - left - right;
+  [0, 0.25, 0.5, 0.75, 1].forEach(t => text(svg, left + t * plotW, H - 6, pct(t), { "text-anchor": "middle", class: "muted" }));
+
+  platforms.forEach((p, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    text(svg, left - 10, y + barH / 2 + 4, p, { "text-anchor": "end" });
+    const total = totals[p];
+    let x0 = left;
+    const segs = groups.map(([g, c]) => ({ g, c, n: g === "Not Rated" ? count(p, "Not Rated") + count(p, "Unknown") : (g === "Unknown" ? 0 : count(p, g)) }))
+      .filter(s => s.n > 0);
+    segs.forEach((s, j) => {
+      const w = (s.n / total) * plotW;
+      const gap = j < segs.length - 1 ? 2 : 0;   // 2px surface gap between segments
+      const r = j === segs.length - 1 ? 4 : 0;   // round only the data end
+      const seg = el("path", { d: r ? barPath(x0, y, w, barH) : `M${x0},${y} h${Math.max(0, w - gap)} v${barH} h${-Math.max(0, w - gap)} Z`, fill: css(s.c) }, svg);
+      const label = s.g === "Not Rated" ? "Not rated / unknown" : s.g;
+      const hit = el("rect", { x: x0, y: y - 6, width: Math.max(w, 1), height: barH + 12, fill: "transparent" }, svg);
+      hit.addEventListener("mousemove", e => { seg.setAttribute("opacity", 0.8); showTip(e, `<strong>${p} · ${label}</strong>${fmt(s.n)} titles · ${pct(s.n / total, 1)}`); });
+      hit.addEventListener("mouseleave", () => { seg.setAttribute("opacity", 1); hideTip(); });
+      x0 += w;
+    });
+  });
+
+  const share = (p, g) => count(p, g) / totals[p];
+  document.getElementById("insight-audience").textContent =
+    `${pct(share("Netflix", "Mature"))} of Netflix titles are rated for mature audiences; Disney+ has none. ` +
+    `Hulu's large unrated share (${pct((count("Hulu", "Unknown") + count("Hulu", "Not Rated")) / totals["Hulu"])}) comes from blank ratings in the source.`;
+  renderTable("table-audience", ["Platform", ...groups.filter(([g]) => g !== "Unknown").map(([g]) => g === "Not Rated" ? "Not rated / unknown" : g)],
+    platforms.map(p => [p, ...groups.filter(([g]) => g !== "Unknown").map(([g]) =>
+      pct((g === "Not Rated" ? count(p, "Not Rated") + count(p, "Unknown") : count(p, g)) / totals[p], 1))]));
+}
+
+// ---------- heatmap ----------
+function renderGenres() {
+  const platforms = ["Netflix", "Prime Video", "Hulu", "Disney+"];
+  const nameOf = { "Prime Video": "Amazon Prime Video" };
+  const share = (g, p) => {
+    const full = nameOf[p] || p;
+    const row = DATA.genre_groups.find(r => r.title_genre__genre_group === g && r.platform__platform_name === full);
+    return (row ? row.genre_tagged_titles : 0) / totals[full];
+  };
+  const groupTotals = {};
+  DATA.genre_groups.forEach(r => { groupTotals[r.title_genre__genre_group] = (groupTotals[r.title_genre__genre_group] || 0) + r.genre_tagged_titles; });
+  const genres = Object.keys(groupTotals).filter(g => g !== "Other").sort((a, b) => groupTotals[b] - groupTotals[a]).slice(0, 12);
+  const max = Math.max(...genres.flatMap(g => platforms.map(p => share(g, p))));
+  const steps = ["--seq-0", "--seq-1", "--seq-2", "--seq-3", "--seq-4", "--seq-5", "--seq-6"];
+  const fillFor = (v) => css(steps[Math.min(steps.length - 1, Math.floor((v / max) * steps.length))]);
+  const lum = (hex) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+
+  const root = document.getElementById("chart-genres");
+  root.innerHTML = "";
+  const W = root.clientWidth, left = Math.min(170, W * 0.38), top = 24, cellH = 28, gap = 2;
+  const cellW = (W - left) / platforms.length;
+  const H = top + genres.length * cellH;
+  const svg = el("svg", { width: W, height: H, role: "img" }, root);
+  platforms.forEach((p, j) => text(svg, left + j * cellW + cellW / 2, 14, p, { "text-anchor": "middle" }));
+  genres.forEach((g, i) => {
+    text(svg, left - 10, top + i * cellH + cellH / 2 + 4, g, { "text-anchor": "end" });
+    platforms.forEach((p, j) => {
+      const v = share(g, p), fill = fillFor(v);
+      const cell = el("rect", { x: left + j * cellW + gap / 2, y: top + i * cellH + gap / 2, width: cellW - gap, height: cellH - gap, rx: 3, fill }, svg);
+      if (cellW > 46) text(svg, left + j * cellW + cellW / 2, top + i * cellH + cellH / 2 + 4, pct(v),
+        { "text-anchor": "middle", style: `fill:${lum(fill) > 0.35 ? "#0b0b0b" : "#ffffff"}`, "font-size": 11 });
+      cell.addEventListener("mousemove", e => { cell.setAttribute("opacity", 0.85); showTip(e, `<strong>${p} · ${g}</strong>${pct(v, 1)} of titles`); });
+      cell.addEventListener("mouseleave", () => { cell.setAttribute("opacity", 1); hideTip(); });
+    });
+  });
+
+  document.getElementById("insight-genres").textContent =
+    `${pct(share("International", "Netflix"))} of Netflix titles are tagged International, far more than any other platform. ` +
+    `Disney+ leans on Kids & Family (${pct(share("Kids & Family", "Disney+"))}) and Animation (${pct(share("Animation & Anime", "Disney+"))}).`;
+  renderTable("table-genres", ["Genre group", ...platforms], genres.map(g => [g, ...platforms.map(p => pct(share(g, p), 1))]));
+}
+
+function renderAll() {
+  renderTiles(); renderMovieShare(); renderAge(); renderAdded(); renderAudience(); renderGenres();
+  document.getElementById("generated").textContent = `Generated ${DATA.generated_on} by scripts/build_dashboard.py from the dbt Semantic Layer.`;
+}
+renderAll();
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderAll, 120); });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
+</script>
+</body>
+</html>

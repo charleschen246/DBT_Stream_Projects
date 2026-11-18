@@ -123,3 +123,6 @@ models:
         description: Comma-separated, alphabetically sorted list of production countries.
       - name: had_misplaced_duration
         data_type: boolean
+      - name: is_content_type_corrected
+        data_type: boolean
+        description: True when content_type was corrected because the duration contradicted it.

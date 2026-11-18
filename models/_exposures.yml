@@ -1,0 +1,24 @@
+version: 2
+
+exposures:
+  - name: streaming_catalog_dashboard
+    label: Streaming Catalog Dashboard
+    type: dashboard
+    maturity: high
+    url: https://charleschen246.github.io/DBT_Stream_Projects/dashboard.html
+    description: >
+      Public dashboard comparing the four catalogs: movie share, title age on arrival,
+      titles added per year, audience mix and genre mix. Every number is a dbt Semantic
+      Layer query, built by scripts/build_dashboard.py.
+    depends_on:
+      - metric('total_titles')
+      - metric('movie_share')
+      - metric('avg_years_from_release_to_platform')
+      - metric('titles_added')
+      - metric('genre_tagged_titles')
+      - ref('fct_titles')
+      - ref('dim_platforms')
+      - ref('dim_ratings')
+      - ref('bridge_title_genres')
+    owner:
+      name: Cheng Chen

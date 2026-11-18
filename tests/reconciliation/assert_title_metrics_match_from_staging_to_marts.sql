@@ -8,6 +8,8 @@
       - titles with a date_added  (dates lost in a join?)
 
     Returns one row per platform/content type where any number differs.
+    The mart side uses source_content_type: content_type itself can be corrected
+    in the intermediate layer (see int_titles__enriched).
 */
 
 {%- set platforms = ['amazon_prime', 'disney_plus', 'hulu', 'netflix'] -%}
@@ -43,7 +45,7 @@ mart_metrics as (
 
     select
         dim_platforms.platform_id,
-        fct_titles.content_type,
+        fct_titles.source_content_type as content_type,
         count(*) as title_count,
         count(distinct fct_titles.show_id) as distinct_show_ids,
         coalesce(sum(fct_titles.release_year), 0) as release_year_checksum,
@@ -51,7 +53,7 @@ mart_metrics as (
     from {{ ref('fct_titles') }} as fct_titles
     inner join {{ ref('dim_platforms') }} as dim_platforms
         on fct_titles.platform_id = dim_platforms.platform_id
-    group by dim_platforms.platform_id, fct_titles.content_type
+    group by dim_platforms.platform_id, fct_titles.source_content_type
 
 ),
 

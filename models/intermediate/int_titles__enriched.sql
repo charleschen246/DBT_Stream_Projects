@@ -59,49 +59,70 @@ duration_parsed as (
 
 ),
 
+-- Hulu labels some series as 'Movie' even though their duration is '2 Seasons'
+-- (e.g. Blippi, Brassic). When the duration unit contradicts the type, trust the duration.
+content_type_corrected as (
+
+    select
+        *,
+        content_type as source_content_type,
+        case
+            when duration_unit like 'season%' then 'tv_show'
+            when duration_unit like 'min%' then 'movie'
+            else content_type
+        end as corrected_content_type
+    from duration_parsed
+
+),
+
 enriched as (
 
     select
-        duration_parsed.title_key,
-        duration_parsed.platform_id,
-        duration_parsed.show_id,
-        duration_parsed.content_type,
-        duration_parsed.title,
-        duration_parsed.directors,
-        duration_parsed.cast_members,
-        duration_parsed.countries,
-        duration_parsed.genres,
-        duration_parsed.description,
+        content_type_corrected.title_key,
+        content_type_corrected.platform_id,
+        content_type_corrected.show_id,
+        content_type_corrected.corrected_content_type as content_type,
+        content_type_corrected.source_content_type,
+        content_type_corrected.title,
+        content_type_corrected.directors,
+        content_type_corrected.cast_members,
+        content_type_corrected.countries,
+        content_type_corrected.genres,
+        content_type_corrected.description,
 
         -- rating
-        duration_parsed.raw_rating,
+        content_type_corrected.raw_rating,
         coalesce(rating_mappings.rating_id, 'UNKNOWN') as rating_id,
 
         -- duration
-        duration_parsed.duration,
+        content_type_corrected.duration,
         case
-            when duration_parsed.content_type = 'movie' and duration_parsed.duration_unit like 'min%'
-                then duration_parsed.duration_value
+            when content_type_corrected.duration_unit like 'min%'
+                then content_type_corrected.duration_value
         end as duration_minutes,
         case
-            when duration_parsed.content_type = 'tv_show' and duration_parsed.duration_unit like 'season%'
-                then duration_parsed.duration_value
+            when content_type_corrected.duration_unit like 'season%'
+                then content_type_corrected.duration_value
         end as season_count,
 
         -- dates
-        duration_parsed.release_year,
-        duration_parsed.release_year - mod(duration_parsed.release_year, 10) as release_decade,
-        duration_parsed.date_added,
-        extract(year from duration_parsed.date_added) - duration_parsed.release_year
+        content_type_corrected.release_year,
+        content_type_corrected.release_year - mod(content_type_corrected.release_year, 10) as release_decade,
+        content_type_corrected.date_added,
+        extract(year from content_type_corrected.date_added) - content_type_corrected.release_year
             as years_from_release_to_platform,
 
         -- flags
-        duration_parsed.content_type = 'movie' as is_movie,
-        duration_parsed.is_rating_misplaced as had_misplaced_duration
+        content_type_corrected.corrected_content_type = 'movie' as is_movie,
+        content_type_corrected.is_rating_misplaced as had_misplaced_duration,
+        coalesce(
+            content_type_corrected.corrected_content_type != content_type_corrected.source_content_type,
+            false
+        ) as is_content_type_corrected
 
-    from duration_parsed
+    from content_type_corrected
     left join rating_mappings
-        on duration_parsed.raw_rating = rating_mappings.raw_rating
+        on content_type_corrected.raw_rating = rating_mappings.raw_rating
 
 )
 

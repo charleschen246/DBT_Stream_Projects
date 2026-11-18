@@ -61,6 +61,20 @@ models:
         description: True when the source had the duration in the rating column.
         data_tests:
           - not_null
+      - name: content_type
+        description: >
+          Corrected content type. When the duration unit contradicts the source type
+          (a 'Movie' lasting '2 Seasons'), the duration wins.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['movie', 'tv_show']
+      - name: source_content_type
+        description: Content type exactly as published by the platform.
+      - name: is_content_type_corrected
+        data_tests:
+          - not_null
 
   - name: int_title_genres__unnested
     description: One row per title per genre, exploded from the comma-separated `genres` column.
@@ -151,3 +165,25 @@ unit_tests:
         - {title_key: a, raw_rating: null, rating_id: UNKNOWN, duration: '74 min', duration_minutes: 74, had_misplaced_duration: true}
         - {title_key: b, raw_rating: UR,   rating_id: NR,      duration: '84 min', duration_minutes: 84, had_misplaced_duration: false}
         - {title_key: c, raw_rating: XYZ,  rating_id: UNKNOWN, duration: '60 min', duration_minutes: 60, had_misplaced_duration: false}
+
+  - name: test_content_type_is_corrected_when_duration_contradicts_it
+    description: >
+      Hulu lists some series as 'Movie' with the duration ('2 Seasons') in the rating
+      column. The duration wins: the row becomes a tv_show with 2 seasons, and the
+      source value is kept in source_content_type.
+    model: int_titles__enriched
+    given:
+      - input: ref('int_titles__unioned')
+        rows:
+          - {title_key: a, content_type: movie,   rating: 2 SEASONS, duration: null}
+          - {title_key: b, content_type: movie,   rating: TV-14,     duration: null}
+          - {title_key: c, content_type: tv_show, rating: TV-MA,     duration: '1 Season'}
+      - input: ref('rating_mappings')
+        rows:
+          - {raw_rating: TV-14, rating_id: TV-14}
+          - {raw_rating: TV-MA, rating_id: TV-MA}
+    expect:
+      rows:
+        - {title_key: a, content_type: tv_show, source_content_type: movie,   season_count: 2,    duration_minutes: null, is_movie: false, is_content_type_corrected: true}
+        - {title_key: b, content_type: movie,   source_content_type: movie,   season_count: null, duration_minutes: null, is_movie: true,  is_content_type_corrected: false}
+        - {title_key: c, content_type: tv_show, source_content_type: tv_show, season_count: 1,    duration_minutes: null, is_movie: false, is_content_type_corrected: false}

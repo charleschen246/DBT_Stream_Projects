@@ -109,7 +109,8 @@ final as (
         countries_rolled_up.countries,
 
         -- data quality
-        titles.had_misplaced_duration
+        titles.had_misplaced_duration,
+        titles.is_content_type_corrected
 
     from titles
     inner join platforms

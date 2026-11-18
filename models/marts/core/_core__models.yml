@@ -96,25 +96,29 @@ models:
           arguments:
             compare_model: ref('stg_streaming__amazon_prime_titles')
             model_filter: "platform_id = 'amazon_prime'"
-            group_by: [content_type]
+            group_by: [source_content_type]
+            compare_group_by: [content_type]
       - metric_reconciles:
           name: reconcile_fct_titles_vs_stg_disney_plus__titles_by_type
           arguments:
             compare_model: ref('stg_streaming__disney_plus_titles')
             model_filter: "platform_id = 'disney_plus'"
-            group_by: [content_type]
+            group_by: [source_content_type]
+            compare_group_by: [content_type]
       - metric_reconciles:
           name: reconcile_fct_titles_vs_stg_hulu__titles_by_type
           arguments:
             compare_model: ref('stg_streaming__hulu_titles')
             model_filter: "platform_id = 'hulu'"
-            group_by: [content_type]
+            group_by: [source_content_type]
+            compare_group_by: [content_type]
       - metric_reconciles:
           name: reconcile_fct_titles_vs_stg_netflix__titles_by_type
           arguments:
             compare_model: ref('stg_streaming__netflix_titles')
             model_filter: "platform_id = 'netflix'"
-            group_by: [content_type]
+            group_by: [source_content_type]
+            compare_group_by: [content_type]
       - metric_reconciles:
           name: reconcile_fct_titles_vs_int__dated_titles_by_platform
           arguments:
@@ -177,6 +181,9 @@ models:
           - accepted_values:
               arguments:
                 values: ['movie', 'tv_show']
+      - name: source_content_type
+        data_type: string
+        description: Content type exactly as the platform published it, before correction. Used by the stg-to-marts reconciliation tests.
       - name: directors
         data_type: string
       - name: cast_members
@@ -207,6 +214,11 @@ models:
         data_tests: [not_null]
       - name: had_misplaced_duration
         data_type: boolean
+        description: True when the source had the duration in the rating column.
+      - name: is_content_type_corrected
+        data_type: boolean
+        description: True when content_type was corrected because the duration contradicted it (e.g. a Hulu 'Movie' lasting '2 Seasons').
+        data_tests: [not_null]
 
   # ---------------------------------------------------------------- bridges
   - name: bridge_title_genres

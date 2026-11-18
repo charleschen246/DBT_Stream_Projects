@@ -9,6 +9,18 @@ governed answer.
 
 **Stack:** dbt Core 1.10+ · BigQuery (production) · DuckDB (CI / local) · MetricFlow · GitHub Actions
 
+**📊 [Live dashboard](https://charleschen246.github.io/DBT_Stream_Projects/dashboard.html)** · **📚 [dbt docs & lineage](https://charleschen246.github.io/DBT_Stream_Projects/)**
+
+## Key findings
+
+Built on the full dataset (22,998 titles). Every number comes from the semantic layer.
+
+- **Disney+ is a vault.** Its titles are **16.6 years old** on average when added, 3.5× Netflix's 4.7.
+- **Hulu is the only TV-first catalog**, with 46% movies. Prime Video is 81% movies.
+- **Netflix is the international platform.** 48% of its titles carry an International genre tag; on Prime Video it's 4%.
+- **Netflix's additions peaked in 2019** (2,016 titles) and slowed through 2021, while Hulu accelerated to 1,085 additions in 2021.
+- **46% of Netflix titles are rated for mature audiences**; Disney+ has none.
+
 ---
 
 ## Architecture
@@ -98,13 +110,15 @@ the fact table (row count, counts by platform and content type, runtime totals, 
 | Trailing commas and duplicates in list columns (`'France, Belgium, '`) | unnest models | Empty elements filtered, then `distinct` |
 | Leading spaces in dates (`' April 4, 2017'`), blank strings | staging | `clean_text()` macro and a lenient date parser |
 | `cast` column is a reserved word | staging | Quoted with `adapter.quote()`, renamed to `cast_members` |
-| Most Amazon titles have no `date_added` | documented | Kept as NULL; time-based metrics exclude them |
+| Most Amazon titles have no `date_added` (98%) | documented | Kept as NULL; time-based metrics exclude them, and the dashboard leaves Prime Video out of the timeline |
+| 62 Hulu series are labeled `Movie`, with durations like `2 Seasons` typed into the rating column | `int_titles__enriched` | The duration wins: corrected to `tv_show`, original kept in `source_content_type`, flagged with `is_content_type_corrected`; unit-tested |
+| 26% of Hulu titles have a blank rating | documented | Mapped to the `UNKNOWN` rating member, so they still join to `dim_ratings` |
 
 ---
 
 ## Testing strategy
 
-**159 tests (157 data tests + 2 unit tests) run on every `dbt build`.**
+**164 tests (161 data tests + 3 unit tests) run on every `dbt build`, in CI on DuckDB and in production on BigQuery.**
 
 | Type | Examples | Purpose |
 |---|---|---|
@@ -185,7 +199,12 @@ mf validate-configs
 
 ### Option B: BigQuery (full Kaggle data)
 
-1. Load the four CSVs from Kaggle ([Netflix](https://www.kaggle.com/datasets/shivamb/netflix-shows), [Amazon Prime](https://www.kaggle.com/datasets/shivamb/amazon-prime-movies-and-tv-shows), [Disney+](https://www.kaggle.com/datasets/shivamb/disney-movies-and-tv-shows), [Hulu](https://www.kaggle.com/datasets/shivamb/hulu-movies-and-tv-shows)) into a BigQuery dataset.
+1. Download the four CSVs from Kaggle ([Netflix](https://www.kaggle.com/datasets/shivamb/netflix-shows), [Amazon Prime](https://www.kaggle.com/datasets/shivamb/amazon-prime-movies-and-tv-shows), [Disney+](https://www.kaggle.com/datasets/shivamb/disney-movies-and-tv-shows), [Hulu](https://www.kaggle.com/datasets/shivamb/hulu-movies-and-tv-shows)) and load them:
+
+   ```bash
+   gcloud auth application-default login
+   python scripts/load_raw_data.py --project <your-gcp-project> --dataset Streaming_project --csv-dir <folder>
+   ```
 2. Add a profile to `~/.dbt/profiles.yml`:
 
    ```yaml
@@ -208,6 +227,16 @@ mf validate-configs
    dbt docs generate && dbt docs serve
    ```
 
+### Publishing the docs and dashboard
+
+```bash
+bash scripts/publish_site.sh   # dbt docs generate --static + scripts/build_dashboard.py → gh-pages branch
+```
+
+The dashboard is a static page, so it keeps working after the warehouse tables are gone. That matters on
+the BigQuery Sandbox, which deletes tables after 60 days. The `streaming_catalog_dashboard` exposure
+records which metrics and models it depends on, so it appears in the lineage graph.
+
 ### Warehouse portability
 
 Two warehouse-specific operations, date parsing and splitting lists, live in dispatch macros in
@@ -222,6 +251,7 @@ dbt's built-in cross-database macros, so the same models run unchanged in produc
 ├── .github/workflows/dbt_ci.yml     # builds + tests every PR on DuckDB
 ├── analyses/                        # ad-hoc SQL that uses the marts
 ├── ci/                              # CI profile + synthetic fixture generator
+├── scripts/                         # load raw data, build dashboard, publish docs + dashboard
 ├── macros/
 │   ├── cross_db/                    # BigQuery / DuckDB dispatch macros
 │   ├── tests/                       # custom generic tests

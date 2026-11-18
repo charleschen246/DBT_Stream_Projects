@@ -56,6 +56,7 @@ final as (
         titles.show_id,
         titles.title,
         titles.content_type,
+        titles.source_content_type,
         titles.directors,
         titles.cast_members,
         titles.description,
@@ -71,7 +72,8 @@ final as (
 
         -- flags
         titles.is_movie,
-        titles.had_misplaced_duration
+        titles.had_misplaced_duration,
+        titles.is_content_type_corrected
 
     from titles
     inner join platforms
