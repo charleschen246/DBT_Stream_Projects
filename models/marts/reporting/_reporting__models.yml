@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: obt_titles
+    description: >
+      One Big Table for BI tools and ad-hoc analysis: fct_titles with every dimension
+      joined in, and genres and countries rolled up into comma-separated lists.
+      Grain: one row per title per platform. For governed metrics, use the semantic
+      layer; for flexible slicing in a BI tool, use this table.
+    data_tests:
+      # The OBT must not add or lose rows compared with the fact table it flattens.
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('fct_titles')
+      - metric_reconciles:
+          name: reconcile_obt_vs_fct__titles_by_platform_and_type
+          arguments:
+            compare_model: ref('fct_titles')
+            group_by: [platform_id, content_type]
+      - metric_reconciles:
+          name: reconcile_obt_vs_fct__runtime_and_seasons_by_platform
+          arguments:
+            compare_model: ref('fct_titles')
+            expression: coalesce(sum(duration_minutes), 0) + coalesce(sum(season_count), 0)
+            group_by: [platform_id]
+      - metric_reconciles:
+          name: reconcile_obt_vs_bridge__genre_tags_by_platform
+          arguments:
+            compare_model: ref('bridge_title_genres')
+            expression: sum(genre_count)
+            compare_expression: count(*)
+            group_by: [platform_id]
+      # A rolled-up list must agree with its count column.
+      - dbt_utils.expression_is_true:
+          name: obt_genres_list_matches_genre_count
+          arguments:
+            expression: "(genre_count = 0 and genres is null) or (genre_count > 0 and genres is not null)"
+      - dbt_utils.expression_is_true:
+          name: obt_countries_list_matches_country_count
+          arguments:
+            expression: "(country_count = 0 and countries is null) or (country_count > 0 and countries is not null)"
+    columns:
+      - name: title_key
+        description: '{{ doc("title_key") }}'
+        data_tests: [unique, not_null]
+      - name: content_type
+        description: '{{ doc("content_type") }}'
+      - name: platform_id
+        description: '{{ doc("platform_id") }}'
+        data_tests: [not_null]
+      - name: platform_name
+        data_tests: [not_null]
+      - name: parent_company
+        data_tests: [not_null]
+      - name: rating_id
+        description: '{{ doc("rating_id") }}'
+        data_tests: [not_null]
+      - name: audience_group
+        description: Audience bucket that lines ratings up across rating systems.
+        data_tests: [not_null]
+      - name: release_year
+        description: '{{ doc("release_year") }}'
+      - name: date_added
+        description: '{{ doc("date_added") }}'
+      - name: added_year
+        description: Calendar year of date_added. NULL when date_added is unknown.
+      - name: added_month_start
+        description: First day of the month the title was added. Handy for monthly trend charts.
+      - name: duration_minutes
+        description: '{{ doc("duration_minutes") }}'
+      - name: season_count
+        description: '{{ doc("season_count") }}'
+      - name: genres
+        description: Comma-separated, alphabetically sorted list of genres.
+      - name: countries
+        description: Comma-separated, alphabetically sorted list of production countries.

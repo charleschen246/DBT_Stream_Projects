@@ -44,6 +44,7 @@ flowchart LR
         B2[bridge_title_countries]
     end
 
+    OBT[(obt_titles<br/>One Big Table)]
     SL{{Semantic Layer<br/>12 metrics}}
     SEEDS[/seeds: platforms,<br/>rating_mappings/]
 
@@ -54,6 +55,7 @@ flowchart LR
     C --> D5 --> B2
     E --> F
     D1 & D2 & D3 & B1 & B2 --> F
+    F & D1 & D2 & D3 & B1 & B2 --> OBT
     F & D1 & D2 & B1 --> SL
 ```
 
@@ -61,13 +63,26 @@ flowchart LR
 |---|---|---|---|
 | **Staging** | One model per source table. Rename, trim, cast, filter. | view | No joins, no business logic |
 | **Intermediate** | Business logic: union platforms, parse durations, map ratings, explode lists | view | Reusable building blocks, not exposed to BI |
-| **Marts** | Star schema: one fact, five dimensions, two bridges | table | What analysts and BI tools query |
+| **Marts: core** | Star schema: one fact, five dimensions, two bridges | table | Conformed models shared by every domain |
+| **Marts: reporting** | `obt_titles`: the star schema flattened into one wide table | table | Plug straight into a BI tool, no joins needed |
 | **Semantic** | Metric definitions on top of the marts | — | One definition per metric |
 
 ### Star schema
 
 `fct_titles` (grain: **one title on one platform**) → `dim_platforms`, `dim_ratings`, `dim_dates`.
 Genres and countries are many-to-many, so they go through `bridge_title_genres` and `bridge_title_countries`.
+
+### One Big Table
+
+`obt_titles` keeps the same grain as `fct_titles` but joins in every dimension and rolls genres and
+countries up into sorted, comma-separated lists, so the grain never fans out. Tests check it against
+the fact table (row count, counts by platform and content type, runtime totals, genre tags).
+
+| Use the... | When |
+|---|---|
+| **Semantic layer** | You need a governed metric with one agreed definition (e.g. `movie_share`) |
+| **Star schema** | You need genre- or country-level analysis, or are building new marts |
+| **OBT** | You're exploring in a BI tool and want every attribute in one place without joins |
 
 ---
 
@@ -87,13 +102,13 @@ Genres and countries are many-to-many, so they go through `bridge_title_genres` 
 
 ## Testing strategy
 
-**139 tests (137 data tests + 2 unit tests) run on every `dbt build`.**
+**152 tests (150 data tests + 2 unit tests) run on every `dbt build`.**
 
 | Type | Examples | Purpose |
 |---|---|---|
 | **Generic tests** | `unique`, `not_null`, `relationships`, `accepted_values`, `dbt_utils.accepted_range` | Keys, referential integrity, valid values |
 | **Custom generic tests** | [`metric_reconciles`](macros/tests/test_metric_reconciles.sql), [`not_blank`](macros/tests/test_not_blank.sql) | Reusable reconciliation and data checks |
-| **Reconciliation (stg → marts)** | [`assert_title_metrics_match_from_staging_to_marts`](tests/reconciliation/assert_title_metrics_match_from_staging_to_marts.sql), [`assert_genre_tags_match_from_staging_to_marts`](tests/reconciliation/assert_genre_tags_match_from_staging_to_marts.sql), 9 `metric_reconciles` tests | Prove no row is dropped, duplicated or changed between layers |
+| **Reconciliation (stg → marts)** | [`assert_title_metrics_match_from_staging_to_marts`](tests/reconciliation/assert_title_metrics_match_from_staging_to_marts.sql), [`assert_genre_tags_match_from_staging_to_marts`](tests/reconciliation/assert_genre_tags_match_from_staging_to_marts.sql), 12 `metric_reconciles` tests | Prove no row is dropped, duplicated or changed between layers |
 | **Business-rule asserts** | movies have minutes and shows have seasons; no future dates; every platform has titles | Domain logic |
 | **Unit tests** | duration parsing, misplaced-duration fix | Test SQL logic on hand-written inputs, independent of the data |
 | **Warn-level monitors** | `assert_all_source_ratings_are_mapped` | Flags new rating codes without failing the build |
@@ -212,7 +227,8 @@ dbt's built-in cross-database macros, so the same models run unchanged in produc
 ├── models/
 │   ├── staging/streaming/           # stg_streaming__*  (1:1 with sources)
 │   ├── intermediate/                # int_*             (business logic)
-│   ├── marts/core/                  # fct_* / dim_* / bridge_*
+│   ├── marts/core/                  # fct_* / dim_* / bridge_*  (conformed star schema)
+│   ├── marts/reporting/             # obt_titles                (One Big Table for BI)
 │   ├── semantic/                    # semantic models + metrics
 │   └── utilities/                   # MetricFlow time spine
 ├── seeds/                           # platforms, rating_mappings
