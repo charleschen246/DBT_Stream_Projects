@@ -58,6 +58,30 @@ mf query --metrics total_titles,movie_share --group-by platform__platform_name
 mf query --metrics titles_added --group-by metric_time__year,platform__platform_name
 ```
 
+## Why I did it this way
+
+Fixing the Hulu rows instead of dropping them. Dropping 62 titles would make Hulu's counts wrong, and the rows
+are fine except for the type. "2 Seasons" only makes sense for a series, and the same rows also have the duration
+in the wrong column, so the "Movie" label looks like the mistake, not the duration. I kept the original value
+so anyone can see what was changed.
+
+Testing staging against the marts directly. Each model can pass its own tests and the pipeline can still be wrong,
+for example a join in the middle that drops some rows. Keys are still unique, nothing is null, but titles are missing.
+Comparing the final tables with staging catches that. The reconciliation tests skip the intermediate layer
+on purpose, so a bug there can't hide itself.
+
+Star schema and one big table. Genres and countries are many-to-many with titles, so the star schema needs bridge
+tables. That's flexible but people have to know how to join it without double counting. `obt_titles` is for BI tools
+and quick questions: one row per title, genres and countries as lists. Both are tested to give the same totals.
+
+A static dashboard instead of Looker Studio. The BigQuery sandbox deletes tables after 60 days, and a Looker Studio
+report would break when that happens. The static page is built from the semantic layer metrics, so the numbers
+come from the same definitions, and it stays online for free.
+
+If the data refreshed every day. This is a one-time download from 2021, so a full rebuild is fine. With daily data
+I would make `fct_titles` incremental, add a snapshot on the source to see when titles leave a platform
+(right now there is no way to know), add source freshness checks, and schedule the build instead of running it by hand.
+
 ## Running it
 
 Locally, without a warehouse:

@@ -1,14 +1,11 @@
 """
-Builds the static dashboard (site/dashboard.html) from dbt Semantic Layer metrics.
+Builds site/dashboard.html from the metrics in models/semantic/sem_streaming.yml.
+Each chart is one `mf query`, so the numbers are the same as the metric definitions.
 
-Every number on the dashboard comes from a MetricFlow query against the governed
-metric definitions in models/semantic/sem_streaming.yml, so the dashboard and any
-other consumer of the semantic layer always agree.
-
-Usage (after `dbt build` against the warehouse):
+Run after `dbt build` against BigQuery:
     python scripts/build_dashboard.py
 
-Requires `mf` (dbt-metricflow) on PATH and a working dbt profile.
+Needs `mf` (dbt-metricflow) and a working dbt profile.
 """
 import csv
 import json

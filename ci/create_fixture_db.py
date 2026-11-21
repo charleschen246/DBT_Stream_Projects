@@ -1,10 +1,9 @@
 """
-Builds a small DuckDB database shaped like the raw Kaggle tables, for CI.
+Makes a small DuckDB file with the same tables as the raw Kaggle data, for CI.
 
-The rows are synthetic, but each one exercises a real quirk of the source data:
-durations typed into the rating column, series mislabeled as movies, trailing commas in list columns,
-duplicate genres, leading spaces in dates, blank strings, missing dates,
-rating aliases, and a rating code and a genre that aren't in the mapping seeds.
+The rows are made up, but each one copies a problem from the real files: duration in the
+rating column, series labeled as movies, trailing commas, repeated genres, spaces before dates,
+blank strings, missing dates, rating aliases, and one rating and one genre that aren't in the seeds.
 
 Usage: python ci/create_fixture_db.py ci/streaming.duckdb
 """
